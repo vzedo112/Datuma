@@ -20,6 +20,10 @@ module.exports = {
         "chart-3": "var(--chart-3)",
         "chart-4": "var(--chart-4)",
         "chart-5": "var(--chart-5)",
+        brand: "var(--brand)",
+        "brand-hover": "var(--brand-hover)",
+        "brand-soft": "var(--brand-soft)",
+        "brand-foreground": "var(--brand-foreground)",
       },
       fontFamily: {
         sans: ["Instrument Sans", "system-ui", "sans-serif"],

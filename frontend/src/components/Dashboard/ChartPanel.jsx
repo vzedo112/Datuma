@@ -13,7 +13,17 @@ import {
   CartesianGrid,
 } from "recharts";
 
-const PALETTE = ["#14110d", "#3d362a", "#6b6457", "#a39c8d", "#c9c1b1", "#dcd5c4"];
+// Coordinated warm-earth palette — all colors share value/chroma range
+// so they feel like one family even at the rainbow extremes.
+const PALETTE = [
+  "#b8722d", // ochre (anchor / brand)
+  "#a84a3c", // terracotta
+  "#3d756a", // teal
+  "#8a7c2e", // olive
+  "#7d3d5b", // plum
+  "#4f5d8a", // slate blue
+  "#c89554", // sand
+];
 
 function compact(n) {
   if (typeof n !== "number" || !isFinite(n)) return String(n ?? "");
@@ -133,7 +143,7 @@ export default function ChartPanel({ chart, primary = false }) {
           </h3>
         </div>
         {primary && (
-          <span className="shrink-0 text-[10px] font-mono uppercase tracking-widest px-2 py-1 bg-foreground text-background rounded-md">
+          <span className="shrink-0 text-[10px] font-mono uppercase tracking-widest px-2 py-1 bg-brand text-brand-foreground rounded-md">
             Primary
           </span>
         )}

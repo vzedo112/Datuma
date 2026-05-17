@@ -18,6 +18,12 @@
   --chart-3: #6b6457;
   --chart-4: #a39c8d;
   --chart-5: #c9c1b1;
+
+  /* Brand accent — ochre */
+  --brand: #b8722d;
+  --brand-hover: #a06324;
+  --brand-soft: #f3e6d4;
+  --brand-foreground: #ffffff;
 }
 
 html, body, #root {

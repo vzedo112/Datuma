@@ -44,7 +44,7 @@ export default function MarketingNav() {
             <span className={cn("font-display tracking-tight transition-all", scrolled ? "text-xl" : "text-2xl")}>
               Datuma
             </span>
-            <span className={cn("text-muted-foreground font-mono transition-all", scrolled ? "text-[10px] mt-0.5" : "text-xs mt-1")}>
+            <span className={cn("text-brand font-mono transition-all", scrolled ? "text-[10px] mt-0.5" : "text-xs mt-1")}>
               ™
             </span>
           </Link>

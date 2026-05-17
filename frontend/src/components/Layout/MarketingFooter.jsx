@@ -32,7 +32,7 @@ export default function MarketingFooter() {
             <div className="col-span-2">
               <Link to="/" className="inline-flex items-center gap-2 mb-6">
                 <span className="text-2xl font-display">Datuma</span>
-                <span className="text-xs text-muted-foreground font-mono">™</span>
+                <span className="text-xs text-brand font-mono">™</span>
               </Link>
               <p className="text-muted-foreground leading-relaxed mb-8 max-w-xs">
                 Drop a spreadsheet, get a business-ready dashboard in 30 seconds. No setup. No SQL.

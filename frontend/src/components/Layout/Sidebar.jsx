@@ -22,7 +22,7 @@ function NavItem({ to, icon: Icon, children, onClick, end }) {
         cn(
           "flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors",
           isActive
-            ? "bg-foreground text-background"
+            ? "bg-brand text-brand-foreground"
             : "text-muted-foreground hover:text-foreground hover:bg-accent"
         )
       }
@@ -62,7 +62,7 @@ export default function Sidebar() {
             <div className="flex items-center gap-2">
               <Database className="h-5 w-5 text-foreground" />
               <span className="text-xl font-display tracking-tight">Datuma</span>
-              <span className="text-[10px] text-muted-foreground font-mono mt-1">™</span>
+              <span className="text-[10px] text-brand font-mono mt-1">™</span>
             </div>
           </Link>
 

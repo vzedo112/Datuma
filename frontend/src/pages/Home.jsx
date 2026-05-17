@@ -59,7 +59,7 @@ function Hero() {
                   </span>
                 ))}
               </span>
-              <span className="absolute -bottom-2 left-0 right-0 h-3 bg-foreground/10" />
+              <span className="absolute -bottom-2 left-0 right-0 h-3 bg-brand/30" />
             </span>
             <span className="text-muted-foreground">.</span>
           </span>

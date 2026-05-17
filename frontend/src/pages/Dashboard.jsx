@@ -36,7 +36,7 @@ export default function Dashboard() {
           </h1>
           {dashboard.primaryQuestion && (
             <p className="text-muted-foreground max-w-2xl leading-relaxed">
-              <span className="font-mono text-[10px] uppercase tracking-widest text-foreground mr-2">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-brand mr-2">
                 Q
               </span>
               {dashboard.primaryQuestion}
