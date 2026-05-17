@@ -1,6 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const { parseFile, getSchema } = require('../services/parser');
+const { getDatasetStats, getRepresentativeSample } = require('../services/stats');
 const { generateDashboard } = require('../services/claude');
 
 const router = express.Router();
@@ -13,10 +14,15 @@ router.post('/', upload.single('file'), async (req, res) => {
     }
 
     const rows = parseFile(req.file);
-    const schema = getSchema(rows);
-    const sampleRows = rows.slice(0, 30);
+    if (rows.length === 0) {
+      return res.status(400).json({ error: 'File contains no data' });
+    }
 
-    const dashboard = await generateDashboard(schema, sampleRows, rows.length);
+    const schema = getSchema(rows);
+    const stats = getDatasetStats(rows, schema);
+    const sampleRows = getRepresentativeSample(rows, 30);
+
+    const dashboard = await generateDashboard(schema, sampleRows, stats, rows.length);
 
     res.json({
       filename: req.file.originalname,
@@ -24,7 +30,7 @@ router.post('/', upload.single('file'), async (req, res) => {
       dashboard,
     });
   } catch (err) {
-    console.error(err);
+    console.error('Upload error:', err);
     res.status(500).json({ error: err.message });
   }
 });
