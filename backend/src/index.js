@@ -10,11 +10,11 @@ app.use(cors());
 app.use(express.json());
 
 app.get('/', (req, res) => {
-  res.json({ message: 'Datumr API is running' });
+  res.json({ message: 'Datuma API is running' });
 });
 
 app.use('/api/upload', uploadRoutes);
 
 app.listen(PORT, () => {
-  console.log(`Datumr server running on port ${PORT}`);
+  console.log(`Datuma server running on port ${PORT}`);
 });
