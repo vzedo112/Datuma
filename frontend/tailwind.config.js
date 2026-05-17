@@ -23,7 +23,7 @@ module.exports = {
       },
       fontFamily: {
         sans: ["Instrument Sans", "system-ui", "sans-serif"],
-        display: ["Instrument Serif", "Georgia", "serif"],
+        display: ["Geist", "Inter", "system-ui", "sans-serif"],
         mono: ["JetBrains Mono", "ui-monospace", "monospace"],
       },
       borderRadius: {
