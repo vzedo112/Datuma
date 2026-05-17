@@ -22,21 +22,39 @@ const plans = [
   },
   {
     name: "Pro",
-    description: "For analysts, founders, and small teams.",
+    description: "For analysts, founders, and freelancers.",
     monthly: 20,
     annual: 17,
     meter: "Includes 20 dashboards · €1.50 each after",
-    cta: "Start 14-day trial",
+    cta: "Get started",
     href: "/app",
     popular: true,
     features: [
+      "1 seat",
       "20 dashboards included each month",
       "€1.50 per additional dashboard",
       "Set a hard monthly spend cap",
       "Up to 1.2M rows per file",
       "Saved history & re-runs",
-      "Custom branding on exports",
       "Email support, 1 business day",
+    ],
+  },
+  {
+    name: "Team",
+    description: "For small teams sharing a workspace.",
+    monthly: 99,
+    annual: 83,
+    meter: "Includes 100 dashboards · €1.00 each after",
+    cta: "Get started",
+    href: "/app",
+    features: [
+      "Up to 5 seats",
+      "100 dashboards included each month",
+      "€1.00 per additional dashboard",
+      "Shared workspace + role permissions",
+      "Custom branding on exports",
+      "Up to 1.2M rows per file",
+      "Priority email support",
     ],
   },
   {
@@ -47,8 +65,8 @@ const plans = [
     cta: "Talk to sales",
     href: "#",
     features: [
-      "Everything in Pro",
-      "Unlimited dashboards",
+      "Everything in Team",
+      "Unlimited seats + dashboards",
       "EU/US data residency",
       "SSO + SCIM provisioning",
       "Audit logs · DPA · SOC 2",
@@ -105,7 +123,7 @@ function Toggle({ annual, setAnnual }) {
 
 function Plans({ annual }) {
   return (
-    <div className="grid md:grid-cols-3 gap-px bg-foreground/10 border border-foreground/10 rounded-xl overflow-hidden">
+    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-px bg-foreground/10 border border-foreground/10 rounded-xl overflow-hidden">
       {plans.map((p, idx) => (
         <div
           key={p.name}
