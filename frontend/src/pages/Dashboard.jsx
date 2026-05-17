@@ -64,7 +64,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0 whitespace-nowrap">
           <Link
             to="/app"
             className="inline-flex items-center gap-1.5 h-10 px-4 rounded-md border border-border text-sm hover:bg-accent transition-colors"

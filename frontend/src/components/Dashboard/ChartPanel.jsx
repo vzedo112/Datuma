@@ -16,11 +16,11 @@ import {
 // Coordinated warm-earth palette — all colors share value/chroma range
 // so they feel like one family even at the rainbow extremes.
 const PALETTE = [
-  "#b8722d", // ochre (anchor / brand)
-  "#a84a3c", // terracotta
+  "#7d3d5b", // plum (anchor / brand)
+  "#b8533d", // terracotta
+  "#b8722d", // ochre
   "#3d756a", // teal
   "#8a7c2e", // olive
-  "#7d3d5b", // plum
   "#4f5d8a", // slate blue
   "#c89554", // sand
 ];

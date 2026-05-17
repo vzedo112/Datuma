@@ -45,7 +45,7 @@ function Hero() {
             visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
           }`}
         >
-          <span className="block">Spreadsheets,</span>
+          <span className="block">Data,</span>
           <span className="block">
             <span className="relative inline-block">
               <span key={verbIdx} className="inline-flex">

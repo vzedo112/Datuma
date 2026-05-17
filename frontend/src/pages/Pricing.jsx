@@ -109,20 +109,21 @@ function Plans({ annual }) {
           key={p.name}
           className={cn(
             "relative p-8 lg:p-10 bg-background flex flex-col",
-            p.popular && "md:-my-px md:py-12 lg:py-14 bg-card border-y-2 md:border-y-0 md:border-x-2 border-foreground"
+            p.popular && "md:-my-px md:py-12 lg:py-14 bg-card ring-2 ring-foreground ring-inset"
           )}
         >
-          {p.popular && (
-            <span className="absolute -top-3 left-8 px-3 py-1 bg-foreground text-background text-[10px] font-mono uppercase tracking-widest">
-              Most Popular
-            </span>
-          )}
-
           <div className="mb-8">
-            <span className="font-mono text-xs text-muted-foreground">
-              {String(idx + 1).padStart(2, "0")}
-            </span>
-            <h3 className="font-display text-3xl mt-2">{p.name}</h3>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <span className="font-mono text-xs text-muted-foreground">
+                {String(idx + 1).padStart(2, "0")}
+              </span>
+              {p.popular && (
+                <span className="px-2 py-0.5 bg-brand text-brand-foreground text-[10px] font-mono uppercase tracking-widest rounded">
+                  Most Popular
+                </span>
+              )}
+            </div>
+            <h3 className="font-display text-3xl">{p.name}</h3>
             <p className="text-sm text-muted-foreground mt-2">{p.description}</p>
           </div>
 
