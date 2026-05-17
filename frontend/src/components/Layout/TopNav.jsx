@@ -1,5 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
 import { Bell, ChevronRight } from "lucide-react";
+import { UserButton } from "@clerk/clerk-react";
+import { isClerkConfigured } from "../../lib/auth";
+import { clerkAppearance } from "../../lib/clerkAppearance";
 
 const labels = {
   "/app": "New upload",
@@ -30,9 +33,22 @@ export default function TopNav() {
         >
           <Bell className="h-4 w-4 text-muted-foreground" />
         </button>
-        <div className="h-8 w-8 rounded-full bg-foreground text-background flex items-center justify-center text-xs font-medium">
-          VZ
-        </div>
+        {isClerkConfigured ? (
+          <UserButton
+            afterSignOutUrl="/"
+            appearance={{
+              ...clerkAppearance,
+              elements: {
+                ...clerkAppearance.elements,
+                avatarBox: "h-8 w-8",
+              },
+            }}
+          />
+        ) : (
+          <div className="h-8 w-8 rounded-full bg-foreground text-background flex items-center justify-center text-xs font-medium">
+            VZ
+          </div>
+        )}
       </div>
     </nav>
   );

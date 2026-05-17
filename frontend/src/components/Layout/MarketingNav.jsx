@@ -1,13 +1,85 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { Menu, X, ArrowUpRight } from "lucide-react";
+import { SignedIn, SignedOut } from "@clerk/clerk-react";
 import { cn } from "../../lib/cn";
+import { isClerkConfigured } from "../../lib/auth";
 
 const links = [
   { name: "Product", href: "/#product" },
   { name: "How it works", href: "/#how" },
   { name: "Pricing", href: "/pricing" },
 ];
+
+function CtaGroup({ scrolled }) {
+  // Three branches:
+  // 1. Clerk not configured → static (link to /app).
+  // 2. Clerk configured + signed out → Sign in + Try free.
+  // 3. Clerk configured + signed in → Open app.
+  if (!isClerkConfigured) {
+    return (
+      <>
+        <NavLink
+          to="/app"
+          className={cn(
+            "text-foreground/70 hover:text-foreground transition-colors",
+            scrolled ? "text-xs" : "text-sm"
+          )}
+        >
+          Sign in
+        </NavLink>
+        <Link
+          to="/app"
+          className={cn(
+            "inline-flex items-center gap-1.5 bg-foreground hover:bg-foreground/90 text-background rounded-full transition-all",
+            scrolled ? "px-4 h-8 text-xs" : "px-5 h-10 text-sm"
+          )}
+        >
+          Try Datuma free
+          <ArrowUpRight className="w-3.5 h-3.5" />
+        </Link>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <SignedOut>
+        <NavLink
+          to="/sign-in"
+          className={cn(
+            "text-foreground/70 hover:text-foreground transition-colors",
+            scrolled ? "text-xs" : "text-sm"
+          )}
+        >
+          Sign in
+        </NavLink>
+        <Link
+          to="/sign-up"
+          className={cn(
+            "inline-flex items-center gap-1.5 bg-foreground hover:bg-foreground/90 text-background rounded-full transition-all",
+            scrolled ? "px-4 h-8 text-xs" : "px-5 h-10 text-sm"
+          )}
+        >
+          Try Datuma free
+          <ArrowUpRight className="w-3.5 h-3.5" />
+        </Link>
+      </SignedOut>
+      <SignedIn>
+        <Link
+          to="/app"
+          className={cn(
+            "inline-flex items-center gap-1.5 bg-foreground hover:bg-foreground/90 text-background rounded-full transition-all",
+            scrolled ? "px-4 h-8 text-xs" : "px-5 h-10 text-sm"
+          )}
+        >
+          Open app
+          <ArrowUpRight className="w-3.5 h-3.5" />
+        </Link>
+      </SignedIn>
+    </>
+  );
+}
 
 export default function MarketingNav() {
   const [scrolled, setScrolled] = useState(false);
@@ -18,6 +90,9 @@ export default function MarketingNav() {
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  const signInPath = isClerkConfigured ? "/sign-in" : "/app";
+  const signUpPath = isClerkConfigured ? "/sign-up" : "/app";
 
   return (
     <header
@@ -63,25 +138,7 @@ export default function MarketingNav() {
           </div>
 
           <div className="hidden md:flex items-center gap-4">
-            <NavLink
-              to="/app"
-              className={cn(
-                "text-foreground/70 hover:text-foreground transition-colors",
-                scrolled ? "text-xs" : "text-sm"
-              )}
-            >
-              Sign in
-            </NavLink>
-            <Link
-              to="/app"
-              className={cn(
-                "inline-flex items-center gap-1.5 bg-foreground hover:bg-foreground/90 text-background rounded-full transition-all",
-                scrolled ? "px-4 h-8 text-xs" : "px-5 h-10 text-sm"
-              )}
-            >
-              Try Datuma free
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </Link>
+            <CtaGroup scrolled={scrolled} />
           </div>
 
           <button
@@ -115,10 +172,18 @@ export default function MarketingNav() {
             ))}
           </div>
           <div className="flex gap-4 pt-8 border-t border-foreground/10">
-            <Link to="/app" onClick={() => setOpen(false)} className="flex-1 text-center rounded-full h-14 leading-[3.5rem] border border-foreground/20">
+            <Link
+              to={signInPath}
+              onClick={() => setOpen(false)}
+              className="flex-1 text-center rounded-full h-14 leading-[3.5rem] border border-foreground/20"
+            >
               Sign in
             </Link>
-            <Link to="/app" onClick={() => setOpen(false)} className="flex-1 text-center rounded-full h-14 leading-[3.5rem] bg-foreground text-background">
+            <Link
+              to={signUpPath}
+              onClick={() => setOpen(false)}
+              className="flex-1 text-center rounded-full h-14 leading-[3.5rem] bg-foreground text-background"
+            >
               Try free
             </Link>
           </div>
