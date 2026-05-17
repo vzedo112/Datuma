@@ -3,6 +3,7 @@ const multer = require('multer');
 const { parseFile, getSchema } = require('../services/parser');
 const { getDatasetStats, getRepresentativeSample } = require('../services/stats');
 const { generateDashboard } = require('../services/claude');
+const { attachChartData } = require('../services/aggregator');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -23,11 +24,12 @@ router.post('/', upload.single('file'), async (req, res) => {
     const sampleRows = getRepresentativeSample(rows, 30);
 
     const dashboard = await generateDashboard(schema, sampleRows, stats, rows.length);
+    const dashboardWithData = attachChartData(rows, dashboard);
 
     res.json({
       filename: req.file.originalname,
       rowCount: rows.length,
-      dashboard,
+      dashboard: dashboardWithData,
     });
   } catch (err) {
     console.error('Upload error:', err);

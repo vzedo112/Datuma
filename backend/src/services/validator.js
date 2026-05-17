@@ -1,3 +1,5 @@
+const { VALID_BUCKETS } = require('./aggregator');
+
 const VALID_CHART_TYPES = ['line', 'bar', 'pie'];
 const VALID_TRENDS = ['up', 'down', 'neutral'];
 const VALID_SEVERITIES = ['info', 'warning', 'success'];
@@ -54,6 +56,22 @@ function validateDashboard(dashboard, schema, stats = null) {
           `Chart ${i} yAxis "${c.yAxis}" is ${stats[c.yAxis].type}, but aggregation "${c.aggregation}" requires a numeric column`
         );
       }
+    }
+
+    if (c.bucket && !VALID_BUCKETS.includes(c.bucket)) {
+      errors.push(`Chart ${i} has invalid bucket: ${c.bucket} (allowed: ${VALID_BUCKETS.join(', ')})`);
+    }
+    if (
+      c.xAxis &&
+      stats &&
+      stats[c.xAxis] &&
+      stats[c.xAxis].type === 'date' &&
+      c.aggregation !== 'none' &&
+      !c.bucket
+    ) {
+      errors.push(
+        `Chart ${i} has date xAxis "${c.xAxis}" with aggregation "${c.aggregation}" but missing bucket (use one of: ${VALID_BUCKETS.join(', ')})`
+      );
     }
   });
 

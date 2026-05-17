@@ -44,8 +44,8 @@ Return ONLY valid JSON, no markdown, no commentary, in this exact structure:
       "label": "Short metric name",
       "computation": "Plain language description of how this is calculated (e.g. 'Sum of revenue column')",
       "value": "The calculated value as a string, formatted with units/currency",
-      "trend": "up | down | neutral",
-      "trendValue": "Specific change reference, e.g. 'up 12% vs first half'"
+      "trend": "up | down | neutral — OPTIONAL, only include when there is a real period-over-period or before-vs-after comparison",
+      "trendValue": "Specific change reference, e.g. 'up 12% vs first half' — OPTIONAL, only include alongside trend"
     }
   ],
   "charts": [
@@ -55,6 +55,7 @@ Return ONLY valid JSON, no markdown, no commentary, in this exact structure:
       "xAxis": "Exact column name from schema (the grouping dimension)",
       "yAxis": "Exact column name from schema (the measure being aggregated). OMIT when aggregation is 'count'.",
       "aggregation": "sum | avg | count | min | max | none",
+      "bucket": "day | week | month | quarter | year | none — REQUIRED when xAxis is a date column and aggregation is not 'none'. Use 'none' when xAxis is already discrete or pre-bucketed.",
       "explanation": "Plain English explanation of what this shows AND why it matters for the business decision"
     }
   ],
@@ -83,10 +84,18 @@ Return ONLY valid JSON, no markdown, no commentary, in this exact structure:
    - "min" / "max": smallest / largest yAxis value per group. Use for extremes (peak load, lowest stock).
    - "none": use the raw yAxis values as-is, no grouping. Use ONLY when the data is already pre-aggregated to one row per xAxis value (e.g. one row per month with monthly total).
 6. yAxis MUST be a numeric column for aggregations sum, avg, min, max, and none. NEVER use a categorical or date column as yAxis with those aggregations. For "count", omit yAxis entirely.
-7. Pie charts only make sense with aggregations that produce a quantitative slice (typically sum or count). Each slice must be a meaningful proportion.
-8. Flag data quality issues (missing values, outliers, inconsistent values) in the insights when relevant.
-9. Return 3-5 metrics, 3-4 charts, and 2-3 insights.
-10. The most important chart must answer the primary question. Place it first.`;
+7. When xAxis is a date column and aggregation is not "none", you MUST specify a bucket so dates can be grouped sensibly:
+   - "day" for fine-grained daily trends (only if the date range is short).
+   - "week" for short-to-medium ranges where weekly cadence matters.
+   - "month" — the default choice for most multi-month transactional datasets.
+   - "quarter" or "year" for long ranges.
+   - "none" only when each xAxis date is already unique and pre-aggregated.
+   Bucketing one row per transaction would produce a meaningless 1-point-per-day chart; always pick the bucket that produces ~5-30 points for readability.
+8. Pie charts only make sense with aggregations that produce a quantitative slice (typically sum or count). Each slice must be a meaningful proportion.
+9. The "trend" field on metrics is OPTIONAL. Only set it when there is a real comparison: period-over-period (this month vs last month), before-vs-after, or top-vs-rest. Do NOT use it for static facts (e.g. "the median is X") or where there is no time/comparison dimension — omit the field entirely in those cases.
+10. Flag data quality issues (missing values, outliers, inconsistent values such as casing variants) in the insights when relevant.
+11. Return 3-5 metrics, 3-4 charts, and 2-3 insights.
+12. The most important chart must answer the primary question. Place it first.`;
 }
 
 function extractJson(text) {
