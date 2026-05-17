@@ -11,8 +11,6 @@ export default function Dashboard() {
   const { dashboard, filename, rowCount, setResult } = useDashboard();
   const navigate = useNavigate();
 
-  // Convenience: if the user navigates directly to /app/dashboard
-  // without uploading, seed with mock data so the design is testable.
   useEffect(() => {
     if (!dashboard) setResult(mockDashboard);
   }, [dashboard, setResult]);

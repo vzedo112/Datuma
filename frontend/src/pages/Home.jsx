@@ -169,7 +169,7 @@ function Features() {
             What it does
           </span>
           <h2 className="text-4xl lg:text-6xl font-display tracking-tight">
-            Everything a junior analyst does.
+            Everything an analyst does.
             <br />
             <span className="text-muted-foreground">In thirty seconds.</span>
           </h2>

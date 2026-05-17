@@ -1,10 +1,20 @@
 const { clerkMiddleware, requireAuth, getAuth } = require('@clerk/express');
 
-const isClerkConfigured = Boolean(process.env.CLERK_SECRET_KEY);
+const publishableKey =
+  process.env.CLERK_PUBLISHABLE_KEY ||
+  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+
+if (!process.env.CLERK_PUBLISHABLE_KEY && process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
+  process.env.CLERK_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+}
+
+const isClerkConfigured = Boolean(process.env.CLERK_SECRET_KEY && publishableKey);
 
 if (!isClerkConfigured) {
+  const hasSecret = Boolean(process.env.CLERK_SECRET_KEY);
+  const hasPublishable = Boolean(publishableKey);
   console.warn(
-    '[auth] Clerk env vars not set — running in dev mode (anonymous access allowed).'
+    `[auth] Clerk not fully configured (secret: ${hasSecret ? "yes" : "no"}, publishable: ${hasPublishable ? "yes" : "no"}) — running in dev mode (anonymous access allowed).`
   );
 }
 
