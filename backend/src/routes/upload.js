@@ -4,16 +4,18 @@ const { parseFile, getSchema } = require('../services/parser');
 const { getDatasetStats, getRepresentativeSample } = require('../services/stats');
 const { generateDashboard } = require('../services/claude');
 const { attachChartData } = require('../services/aggregator');
+const { requireUser, getUserId } = require('../middleware/auth');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-router.post('/', upload.single('file'), async (req, res) => {
+router.post('/', requireUser(), upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
+    const userId = getUserId(req);
     const rows = parseFile(req.file);
     if (rows.length === 0) {
       return res.status(400).json({ error: 'File contains no data' });
@@ -30,6 +32,7 @@ router.post('/', upload.single('file'), async (req, res) => {
       filename: req.file.originalname,
       rowCount: rows.length,
       dashboard: dashboardWithData,
+      userId,
     });
   } catch (err) {
     console.error('Upload error:', err);

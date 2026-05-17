@@ -2,12 +2,14 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const uploadRoutes = require('./routes/upload');
+const { withClerk } = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+app.use(withClerk());
 
 app.get('/', (req, res) => {
   res.json({ message: 'Datuma API is running' });
