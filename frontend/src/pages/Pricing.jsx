@@ -23,17 +23,19 @@ const plans = [
   {
     name: "Pro",
     description: "For analysts, founders, and small teams.",
-    monthly: 29,
-    annual: 24,
+    monthly: 20,
+    annual: 17,
+    meter: "Includes 20 dashboards · €1.50 each after",
     cta: "Start 14-day trial",
     href: "/app",
     popular: true,
     features: [
-      "Unlimited dashboards",
+      "20 dashboards included each month",
+      "€1.50 per additional dashboard",
+      "Set a hard monthly spend cap",
       "Up to 1.2M rows per file",
       "Saved history & re-runs",
       "Custom branding on exports",
-      "API access (beta)",
       "Email support, 1 business day",
     ],
   },
@@ -46,10 +48,10 @@ const plans = [
     href: "#",
     features: [
       "Everything in Pro",
+      "Unlimited dashboards",
       "EU/US data residency",
       "SSO + SCIM provisioning",
-      "Audit logs",
-      "DPA + SOC 2",
+      "Audit logs · DPA · SOC 2",
       "Dedicated success manager",
     ],
   },
@@ -129,12 +131,19 @@ function Plans({ annual }) {
 
           <div className="mb-8 pb-8 border-b border-foreground/10">
             {p.monthly !== null ? (
-              <div className="flex items-baseline gap-2">
-                <span className="font-display text-5xl lg:text-6xl">
-                  €{annual ? p.annual : p.monthly}
-                </span>
-                <span className="text-muted-foreground">/month</span>
-              </div>
+              <>
+                <div className="flex items-baseline gap-2">
+                  <span className="font-display text-5xl lg:text-6xl">
+                    €{annual ? p.annual : p.monthly}
+                  </span>
+                  <span className="text-muted-foreground">/month</span>
+                </div>
+                {p.meter && (
+                  <p className="mt-3 text-xs font-mono text-muted-foreground">
+                    {p.meter}
+                  </p>
+                )}
+              </>
             ) : (
               <span className="font-display text-4xl">Custom</span>
             )}
@@ -168,6 +177,10 @@ function Plans({ annual }) {
 }
 
 const faqs = [
+  {
+    q: "How does the Pro overage work?",
+    a: "Pro includes 20 dashboards each month. Beyond that, each additional dashboard is €1.50, billed at the end of the cycle. You can set a hard monthly spend cap — once you hit it, uploads pause until next month or until you raise it.",
+  },
   {
     q: "What file types can I upload?",
     a: "CSV (any delimiter), .xlsx, and .xls. We auto-detect the encoding and the first sheet of Excel files.",

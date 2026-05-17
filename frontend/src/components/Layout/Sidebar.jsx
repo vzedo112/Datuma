@@ -107,7 +107,7 @@ export default function Sidebar() {
                 Free plan
               </p>
               <p className="text-sm mb-3">
-                2 of 5 dashboards used this month.
+                2 of 3 dashboards used this month.
               </p>
               <Link
                 to="/pricing"
