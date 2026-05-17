@@ -24,7 +24,7 @@ router.post('/', upload.single('file'), async (req, res) => {
     const sampleRows = getRepresentativeSample(rows, 30);
 
     const dashboard = await generateDashboard(schema, sampleRows, stats, rows.length);
-    const dashboardWithData = attachChartData(rows, dashboard);
+    const dashboardWithData = attachChartData(rows, dashboard, stats);
 
     res.json({
       filename: req.file.originalname,

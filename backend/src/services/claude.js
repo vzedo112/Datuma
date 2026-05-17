@@ -92,7 +92,10 @@ Return ONLY valid JSON, no markdown, no commentary, in this exact structure:
    - "none" only when each xAxis date is already unique and pre-aggregated.
    Bucketing one row per transaction would produce a meaningless 1-point-per-day chart; always pick the bucket that produces ~5-30 points for readability.
 8. Pie charts only make sense with aggregations that produce a quantitative slice (typically sum or count). Each slice must be a meaningful proportion.
-9. The "trend" field on metrics is OPTIONAL. Only set it when there is a real comparison: period-over-period (this month vs last month), before-vs-after, or top-vs-rest. Do NOT use it for static facts (e.g. "the median is X") or where there is no time/comparison dimension — omit the field entirely in those cases.
+9. The "trend" and "trendValue" fields on metrics are OPTIONAL and must be used SPARINGLY. Only set them when the metric reflects a measurable CHANGE between two specific time periods or two distinct groups in the data.
+   - VALID examples (trend SHOULD be set): "August revenue €81k vs January €42k — up 93%", "Sales hires hired since 2024 average 3.0 rating vs 4.4 for pre-2024", "Q3 cost down 12% vs Q2".
+   - INVALID examples (trend MUST be omitted entirely — no exceptions): "Total revenue is €475k" (static total), "Median is €68k, mean is €76k" (distribution observation, not a change), "Average rating is 4.02/5" (static average), "Top earner is Orla at €148k" (extreme value), "25 employees across 6 departments" (static count).
+   Rule of thumb: if "trendValue" does not contain comparison language ("vs", "compared to", "up from", "down from", "year-over-year", or two specific named periods/groups), do NOT set "trend". Distribution facts, totals, counts, extremes, and rankings are NOT trends.
 10. Flag data quality issues (missing values, outliers, inconsistent values such as casing variants) in the insights when relevant.
 11. Return 3-5 metrics, 3-4 charts, and 2-3 insights.
 12. The most important chart must answer the primary question. Place it first.`;
