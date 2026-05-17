@@ -7,11 +7,13 @@ export function DashboardProvider({ children }) {
   const [filename, setFilename] = useState(null);
   const [rowCount, setRowCount] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const setResult = useCallback((result) => {
     setDashboard(result?.dashboard ?? null);
     setFilename(result?.filename ?? null);
     setRowCount(result?.rowCount ?? null);
+    setError(null);
   }, []);
 
   const reset = useCallback(() => {
@@ -19,11 +21,22 @@ export function DashboardProvider({ children }) {
     setFilename(null);
     setRowCount(null);
     setLoading(false);
+    setError(null);
   }, []);
 
   return (
     <DashboardContext.Provider
-      value={{ dashboard, filename, rowCount, loading, setLoading, setResult, reset }}
+      value={{
+        dashboard,
+        filename,
+        rowCount,
+        loading,
+        error,
+        setLoading,
+        setError,
+        setResult,
+        reset,
+      }}
     >
       {children}
     </DashboardContext.Provider>

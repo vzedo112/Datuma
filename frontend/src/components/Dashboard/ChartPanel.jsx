@@ -54,17 +54,35 @@ function Empty() {
   );
 }
 
+function shouldAngleLabels(data) {
+  return data.length > 6 || data.some((d) => String(d.x).length > 8);
+}
+
+function truncate(s, n = 14) {
+  const str = String(s);
+  return str.length > n ? str.slice(0, n - 1) + "…" : str;
+}
+
 function renderChart(chart) {
   const data = chart.data ?? [];
   if (data.length === 0) return <Empty />;
+  const angle = shouldAngleLabels(data);
 
   if (chart.type === "line") {
     return (
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 8, right: 16, left: -10, bottom: 0 }}>
+        <LineChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: angle ? 24 : 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(20,17,13,0.08)" />
-          <XAxis dataKey="x" tickLine={false} axisLine={false} />
-          <YAxis tickFormatter={compact} tickLine={false} axisLine={false} width={48} />
+          <XAxis
+            dataKey="x"
+            tickLine={false}
+            axisLine={false}
+            tickFormatter={(v) => truncate(v, 12)}
+            angle={angle ? -30 : 0}
+            textAnchor={angle ? "end" : "middle"}
+            height={angle ? 60 : 30}
+          />
+          <YAxis tickFormatter={compact} tickLine={false} axisLine={false} width={56} />
           <Tooltip content={<TooltipBody />} cursor={{ stroke: "rgba(20,17,13,0.2)" }} />
           <Line
             type="monotone"
@@ -82,10 +100,19 @@ function renderChart(chart) {
   if (chart.type === "bar") {
     return (
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 8, right: 16, left: -10, bottom: 0 }}>
+        <BarChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: angle ? 24 : 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(20,17,13,0.08)" vertical={false} />
-          <XAxis dataKey="x" tickLine={false} axisLine={false} interval={0} />
-          <YAxis tickFormatter={compact} tickLine={false} axisLine={false} width={48} />
+          <XAxis
+            dataKey="x"
+            tickLine={false}
+            axisLine={false}
+            interval={0}
+            tickFormatter={(v) => truncate(v, 14)}
+            angle={angle ? -30 : 0}
+            textAnchor={angle ? "end" : "middle"}
+            height={angle ? 70 : 30}
+          />
+          <YAxis tickFormatter={compact} tickLine={false} axisLine={false} width={56} />
           <Tooltip content={<TooltipBody />} cursor={{ fill: "rgba(20,17,13,0.06)" }} />
           <Bar dataKey="y" radius={[4, 4, 0, 0]}>
             {data.map((_, i) => (

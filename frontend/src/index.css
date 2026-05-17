@@ -85,6 +85,10 @@ body {
   font-size: 11px;
   fill: var(--muted-foreground);
 }
-.recharts-tooltip-wrapper {
-  outline: none;
+.recharts-tooltip-wrapper,
+.recharts-wrapper,
+.recharts-surface,
+.recharts-wrapper svg,
+.recharts-wrapper :focus {
+  outline: none !important;
 }
