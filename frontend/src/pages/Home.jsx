@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -12,6 +12,87 @@ import {
 } from "lucide-react";
 import MarketingNav from "../components/Layout/MarketingNav";
 import MarketingFooter from "../components/Layout/MarketingFooter";
+import MetricCard from "../components/Dashboard/MetricCard";
+import ChartPanel from "../components/Dashboard/ChartPanel";
+
+const previewDashboard = {
+  title: "Q3 Sales — Revenue & Margin Brief",
+  primaryQuestion:
+    "Which product categories are driving revenue, and where is margin slipping?",
+  domain: "Retail sales (APAC, Q3 2025)",
+  filename: "q3_orders_apac.csv",
+  rowCount: 12480,
+  metrics: [
+    {
+      label: "Total revenue",
+      value: "€4.82M",
+      computation: "Sum of order_total across 12,480 rows",
+      trend: "up",
+      trendValue: "up 8% vs Q2",
+    },
+    {
+      label: "Avg order value",
+      value: "€386",
+      computation: "Mean of order_total",
+    },
+    {
+      label: "Gross margin",
+      value: "31.4%",
+      computation: "Sum(revenue − cogs) ÷ Sum(revenue)",
+      trend: "down",
+      trendValue: "down 2.1pp vs Q2",
+    },
+  ],
+  charts: [
+    {
+      type: "bar",
+      title: "Revenue by product category",
+      aggregation: "sum",
+      bucket: "none",
+      explanation:
+        "Electronics + Apparel = 58% of Q3 revenue. The long tail under-indexes vs Q2.",
+      data: [
+        { x: "Electronics", y: 1542000 },
+        { x: "Apparel", y: 1248000 },
+        { x: "Home", y: 612000 },
+        { x: "Beauty", y: 498000 },
+        { x: "Sports", y: 384000 },
+        { x: "Toys", y: 268000 },
+      ],
+    },
+    {
+      type: "line",
+      title: "Weekly revenue trend",
+      aggregation: "sum",
+      bucket: "week",
+      explanation:
+        "Climbs through August, peaks W34, then softens — typical post back-to-school dip.",
+      data: [
+        { x: "2025-W27", y: 312000 },
+        { x: "2025-W29", y: 351000 },
+        { x: "2025-W31", y: 402000 },
+        { x: "2025-W33", y: 462000 },
+        { x: "2025-W34", y: 491000 },
+        { x: "2025-W36", y: 421000 },
+        { x: "2025-W38", y: 382000 },
+      ],
+    },
+    {
+      type: "pie",
+      title: "Revenue share by channel",
+      aggregation: "sum",
+      bucket: "none",
+      explanation:
+        "Web direct surpassed marketplace for the first time — keep paid-search budget weighted there.",
+      data: [
+        { x: "Web direct", y: 2256000 },
+        { x: "Marketplace", y: 1428000 },
+        { x: "Retail partner", y: 786000 },
+        { x: "B2B", y: 352000 },
+      ],
+    },
+  ],
+};
 
 const verbs = ["briefed", "decoded", "explained", "answered"];
 
@@ -122,6 +203,152 @@ function Hero() {
               ))}
             </div>
           ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Showcase() {
+  const [visible, setVisible] = useState(false);
+  const [chartIdx, setChartIdx] = useState(0);
+  const ref = useRef(null);
+  const total = previewDashboard.charts.length;
+
+  useEffect(() => {
+    const obs = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) setVisible(true);
+      },
+      { threshold: 0.1 }
+    );
+    if (ref.current) obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!visible) return;
+    const id = setInterval(() => {
+      setChartIdx((p) => (p + 1) % total);
+    }, 4500);
+    return () => clearInterval(id);
+  }, [visible, total]);
+
+  const activeChart = previewDashboard.charts[chartIdx];
+
+  return (
+    <section
+      id="example"
+      ref={ref}
+      className="relative py-20 lg:py-28 border-t border-foreground/10"
+    >
+      <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
+        <div className="mb-10 lg:mb-12 max-w-3xl">
+          <span className="inline-flex items-center gap-3 text-xs font-mono uppercase tracking-widest text-muted-foreground mb-5">
+            <span className="w-8 h-px bg-foreground/30" />
+            What you get
+          </span>
+          <h2
+            className={`text-4xl lg:text-5xl font-display tracking-tight transition-all duration-700 ${
+              visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"
+            }`}
+          >
+            A one-page brief,
+            <span className="text-muted-foreground"> every time.</span>
+          </h2>
+        </div>
+
+        <div
+          className={`relative rounded-2xl border border-foreground/15 bg-background overflow-hidden shadow-[0_24px_60px_-30px_rgba(20,17,13,0.25)] transition-all duration-1000 delay-150 ${
+            visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+          }`}
+        >
+          {/* Window chrome */}
+          <div className="flex items-center gap-3 px-4 py-2.5 border-b border-foreground/10 bg-card">
+            <div className="flex gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-foreground/15" />
+              <span className="w-2.5 h-2.5 rounded-full bg-foreground/15" />
+              <span className="w-2.5 h-2.5 rounded-full bg-foreground/15" />
+            </div>
+            <div className="ml-2 flex-1 flex justify-center">
+              <span className="font-mono text-[11px] text-muted-foreground tracking-tight px-3 py-1 rounded-md bg-background border border-foreground/10">
+                datuma.app / dashboard / {previewDashboard.filename}
+              </span>
+            </div>
+            <div className="w-12 hidden sm:block" />
+          </div>
+
+          {/* Dashboard content */}
+          <div className="p-5 sm:p-6">
+            <div className="mb-5 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+              <div className="min-w-0">
+                <h3 className="font-display text-xl lg:text-2xl tracking-tight mb-1">
+                  {previewDashboard.title}
+                </h3>
+                <p className="text-sm text-muted-foreground max-w-xl leading-relaxed">
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-brand mr-2">
+                    Q
+                  </span>
+                  {previewDashboard.primaryQuestion}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono text-muted-foreground shrink-0">
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-accent">
+                  <FileSpreadsheet className="w-3 h-3" />
+                  {previewDashboard.filename}
+                </span>
+                <span className="px-2 py-0.5 rounded-md bg-accent">
+                  {previewDashboard.rowCount.toLocaleString()} rows
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              {previewDashboard.metrics.map((m, i) => (
+                <MetricCard key={i} {...m} />
+              ))}
+            </div>
+
+            {/* Cycling chart slot */}
+            <div className="relative">
+              <div
+                key={chartIdx}
+                className="animate-fade-up"
+              >
+                <ChartPanel chart={activeChart} primary />
+              </div>
+            </div>
+
+            {/* Dot indicators */}
+            <div className="mt-4 flex items-center justify-center gap-2">
+              {previewDashboard.charts.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setChartIdx(i)}
+                  aria-label={`Show chart ${i + 1}`}
+                  className={`h-1.5 rounded-full transition-all ${
+                    i === chartIdx
+                      ? "w-8 bg-foreground"
+                      : "w-1.5 bg-foreground/20 hover:bg-foreground/40"
+                  }`}
+                />
+              ))}
+              <span className="ml-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                {activeChart.type} · {activeChart.aggregation}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8 flex justify-center">
+          <Link
+            to="/app"
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group"
+          >
+            Run one on your own file
+            <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
+          </Link>
         </div>
       </div>
     </section>
@@ -322,6 +549,7 @@ export default function Home() {
     <main className="relative min-h-screen overflow-x-hidden">
       <MarketingNav />
       <Hero />
+      <Showcase />
       <Features />
       <HowItWorks />
       <Trust />
