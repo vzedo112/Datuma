@@ -11,6 +11,7 @@ const PLANS = {
     overageEuros: null,
     rowLimit: 50_000,
     seats: 1,
+    fileLimit: 2,
   },
   pro: {
     key: 'pro',
@@ -19,6 +20,7 @@ const PLANS = {
     overageEuros: 1.5,
     rowLimit: 1_200_000,
     seats: 1,
+    fileLimit: 5,
   },
   team: {
     key: 'team',
@@ -27,6 +29,7 @@ const PLANS = {
     overageEuros: 1.0,
     rowLimit: 1_200_000,
     seats: 5,
+    fileLimit: 10,
   },
   enterprise: {
     key: 'enterprise',
@@ -35,6 +38,7 @@ const PLANS = {
     overageEuros: 0,
     rowLimit: 1_200_000,
     seats: Infinity,
+    fileLimit: 20,
   },
 };
 
