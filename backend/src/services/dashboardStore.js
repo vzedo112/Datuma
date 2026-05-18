@@ -1,13 +1,13 @@
 const crypto = require('crypto');
 const db = require('../db');
 
-async function saveDashboard({ userId, filename, rowCount, dashboard }) {
+async function saveDashboard({ userId, filename, rowCount, dashboard, parentId = null }) {
   if (!db.isReady() || !userId) return null;
   const result = await db.query(
-    `INSERT INTO dashboards (user_id, filename, row_count, dashboard)
-     VALUES ($1, $2, $3, $4)
+    `INSERT INTO dashboards (user_id, filename, row_count, dashboard, parent_id)
+     VALUES ($1, $2, $3, $4, $5)
      RETURNING id, created_at`,
-    [userId, filename, rowCount, dashboard]
+    [userId, filename, rowCount, dashboard, parentId]
   );
   return result.rows[0];
 }
@@ -15,12 +15,16 @@ async function saveDashboard({ userId, filename, rowCount, dashboard }) {
 async function listDashboards(userId, { limit = 50 } = {}) {
   if (!db.isReady() || !userId) return [];
   const result = await db.query(
-    `SELECT id, name, filename, row_count, created_at,
-            dashboard->>'title' AS title,
-            dashboard->>'domain' AS domain
-     FROM dashboards
-     WHERE user_id = $1
-     ORDER BY created_at DESC
+    `SELECT d.id, d.name, d.filename, d.row_count, d.created_at, d.parent_id,
+            d.dashboard->>'title' AS title,
+            d.dashboard->>'domain' AS domain,
+            p.name AS parent_name,
+            p.filename AS parent_filename,
+            p.dashboard->>'title' AS parent_title
+     FROM dashboards d
+     LEFT JOIN dashboards p ON p.id = d.parent_id AND p.user_id = d.user_id
+     WHERE d.user_id = $1
+     ORDER BY d.created_at DESC
      LIMIT $2`,
     [userId, limit]
   );
@@ -54,7 +58,7 @@ async function deleteDashboard(id, userId) {
 async function getDashboard(id, userId) {
   if (!db.isReady() || !userId) return null;
   const result = await db.query(
-    `SELECT id, name, filename, row_count, dashboard, created_at, share_token
+    `SELECT id, name, filename, row_count, dashboard, created_at, share_token, parent_id
      FROM dashboards
      WHERE id = $1 AND user_id = $2`,
     [id, userId]

@@ -12,12 +12,13 @@ function sweep() {
 
 setInterval(sweep, 60 * 1000).unref();
 
-function create(userId, datasets) {
+function create(userId, datasets, extra = {}) {
   const id = crypto.randomBytes(18).toString('base64url');
   sessions.set(id, {
     userId,
     datasets,
     expiresAt: Date.now() + TTL_MS,
+    ...extra,
   });
   return id;
 }
