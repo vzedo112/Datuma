@@ -59,12 +59,20 @@ export default function Upload() {
       clearInterval(stageInterval);
       setLoading(false);
       setStage(0);
-      const message =
-        err?.response?.data?.error ||
-        (err?.code === "ERR_NETWORK"
-          ? "Couldn't reach the server. Is the backend running?"
-          : err?.message) ||
-        "Upload failed.";
+      const data = err?.response?.data;
+      let message;
+      if (data?.code === "QUOTA_EXCEEDED") {
+        message = `${data.error} Visit Pricing to upgrade your plan.`;
+      } else if (data?.code === "ROW_LIMIT_EXCEEDED") {
+        message = data.error;
+      } else {
+        message =
+          data?.error ||
+          (err?.code === "ERR_NETWORK"
+            ? "Couldn't reach the server. Is the backend running?"
+            : err?.message) ||
+          "Upload failed.";
+      }
       setError(message);
     }
   };
