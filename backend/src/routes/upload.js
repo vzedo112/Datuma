@@ -3,10 +3,15 @@ const multer = require('multer');
 const { parseFile, getSchema } = require('../services/parser');
 const { getDatasetStats, getRepresentativeSample } = require('../services/stats');
 const { analyzeQuality } = require('../services/dataQuality');
+const { analyzeCrossFile, analyzeCrossUpload } = require('../services/overlapAnalysis');
 const { generateDashboard } = require('../services/claude');
 const { attachChartData } = require('../services/aggregator');
 const { requireUser, getUserId, getUserPlan } = require('../middleware/auth');
-const { saveDashboard, countThisMonth } = require('../services/dashboardStore');
+const {
+  saveDashboard,
+  countThisMonth,
+  listRecentWithContext,
+} = require('../services/dashboardStore');
 const { getPlan } = require('../services/plans');
 const uploadSession = require('../services/uploadSession');
 
@@ -124,6 +129,21 @@ router.post(
       }
 
       const deduped = dedupeDatasetNames(parsed);
+
+      // Cross-file overlap (only meaningful with 2+ files in the same upload).
+      const crossFile = analyzeCrossFile(deduped);
+
+      // Cross-upload overlap — compare against the user's most recent saved
+      // dashboards that carry an analysisContext. Best-effort: if persistence
+      // is unavailable or the lookup fails, we just skip this signal.
+      let crossUpload = [];
+      try {
+        const recent = await listRecentWithContext(userId, { limit: 5 });
+        crossUpload = analyzeCrossUpload(deduped, recent);
+      } catch (err) {
+        console.warn('Cross-upload overlap check failed:', err.message);
+      }
+
       const uploadId = uploadSession.create(userId, deduped);
 
       res.json({
@@ -134,6 +154,8 @@ router.post(
           rowCount: d.rowCount,
           quality: d.quality,
         })),
+        crossFileFindings: crossFile,
+        crossUploadFindings: crossUpload,
         overage: overInclusive
           ? { isOverage: true, overageEuros: plan.overageEuros, used: used + 1 }
           : null,

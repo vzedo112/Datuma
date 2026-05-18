@@ -94,6 +94,22 @@ async function revokeShareToken(id, userId) {
   return result.rowCount > 0;
 }
 
+async function listRecentWithContext(userId, { limit = 5 } = {}) {
+  if (!db.isReady() || !userId) return [];
+  const result = await db.query(
+    `SELECT id, name, filename, created_at,
+            dashboard->>'title' AS title,
+            dashboard AS dashboard
+     FROM dashboards
+     WHERE user_id = $1
+       AND dashboard ? 'analysisContext'
+     ORDER BY created_at DESC
+     LIMIT $2`,
+    [userId, limit]
+  );
+  return result.rows;
+}
+
 async function getDashboardByToken(token) {
   if (!db.isReady() || !token) return null;
   const result = await db.query(
@@ -127,4 +143,5 @@ module.exports = {
   getDashboardByToken,
   renameDashboard,
   deleteDashboard,
+  listRecentWithContext,
 };

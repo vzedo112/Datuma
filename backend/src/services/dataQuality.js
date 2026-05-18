@@ -147,6 +147,39 @@ function analyzeOutliers(rows, schema) {
   return flags;
 }
 
+const PK_NAME_HINTS = /(^|_)(id|uuid|key|code|number|no|num|email)$|^email$/i;
+
+function analyzePrimaryKeyCandidates(rows, schema) {
+  if (rows.length < 5) return [];
+  const candidates = [];
+  for (const col of schema) {
+    const seen = new Set();
+    let nonNull = 0;
+    let dupes = 0;
+    for (const r of rows) {
+      const v = r[col.name];
+      if (v === null || v === undefined || v === '') continue;
+      nonNull++;
+      const key = typeof v === 'string' ? v.trim() : v;
+      if (seen.has(key)) dupes++;
+      else seen.add(key);
+    }
+    if (nonNull < Math.max(5, rows.length * 0.5)) continue;
+    const uniqueRatio = seen.size / nonNull;
+    const nameLooksLikeKey = PK_NAME_HINTS.test(col.name);
+    if (uniqueRatio >= 0.98 || (uniqueRatio >= 0.9 && nameLooksLikeKey)) {
+      candidates.push({
+        column: col.name,
+        uniqueRatio: Number(uniqueRatio.toFixed(3)),
+        nonNull,
+        duplicates: dupes,
+        confidence: uniqueRatio >= 0.98 ? 'high' : 'medium',
+      });
+    }
+  }
+  return candidates.sort((a, b) => b.uniqueRatio - a.uniqueRatio).slice(0, 3);
+}
+
 function computeSeverity(report) {
   const total = report.totalRows || 1;
   if (
@@ -174,6 +207,7 @@ function analyzeQuality(rows, schema) {
     dateFormats: analyzeDateFormats(rows, schema),
     mixedTypes: analyzeMixedTypes(rows, schema),
     outliers: analyzeOutliers(rows, schema),
+    primaryKeyCandidates: analyzePrimaryKeyCandidates(rows, schema),
   };
   report.severity = computeSeverity(report);
   return report;
