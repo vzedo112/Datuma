@@ -31,4 +31,19 @@ export async function uploadFile(file) {
   return response.data;
 }
 
+export async function listDashboards() {
+  const response = await api.get("/api/dashboards");
+  return response.data.items ?? [];
+}
+
+export async function getDashboardById(id) {
+  const response = await api.get(`/api/dashboards/${id}`);
+  return response.data;
+}
+
+export async function getUsage() {
+  const response = await api.get("/api/dashboards/usage");
+  return response.data;
+}
+
 export default api;
