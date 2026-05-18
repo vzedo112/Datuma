@@ -11,6 +11,7 @@ const {
   saveDashboard,
   countThisMonth,
   listRecentWithContext,
+  getDashboard,
 } = require('../services/dashboardStore');
 const { getPlan } = require('../services/plans');
 const uploadSession = require('../services/uploadSession');
@@ -89,6 +90,13 @@ router.post(
           .map((o) => [o.filename, (o.name || '').toString().trim()])
       );
 
+      const parentDashboardId = req.body?.parentDashboardId
+        ? Number(req.body.parentDashboardId)
+        : null;
+      const parentDashboard = Number.isInteger(parentDashboardId)
+        ? await getDashboard(parentDashboardId, userId)
+        : null;
+
       const parsed = [];
       for (const file of files) {
         const rows = parseFile(file);
@@ -134,17 +142,26 @@ router.post(
       const crossFile = analyzeCrossFile(deduped);
 
       // Cross-upload overlap — compare against the user's most recent saved
-      // dashboards that carry an analysisContext. Best-effort: if persistence
-      // is unavailable or the lookup fails, we just skip this signal.
+      // dashboards that carry an analysisContext. If we're updating a specific
+      // parent, prepend it so it's always considered even when it's old.
+      // Best-effort: if persistence is unavailable, we just skip this signal.
       let crossUpload = [];
       try {
         const recent = await listRecentWithContext(userId, { limit: 5 });
-        crossUpload = analyzeCrossUpload(deduped, recent);
+        const priors = parentDashboard
+          ? [
+              parentDashboard,
+              ...recent.filter((r) => r.id !== parentDashboard.id),
+            ]
+          : recent;
+        crossUpload = analyzeCrossUpload(deduped, priors);
       } catch (err) {
         console.warn('Cross-upload overlap check failed:', err.message);
       }
 
-      const uploadId = uploadSession.create(userId, deduped);
+      const uploadId = uploadSession.create(userId, deduped, {
+        parentDashboardId: parentDashboard ? parentDashboard.id : null,
+      });
 
       res.json({
         uploadId,
@@ -237,6 +254,7 @@ router.post('/generate', requireUser(), express.json(), async (req, res) => {
         filename: primaryFilename,
         rowCount: totalRows,
         dashboard: dashboardWithData,
+        parentId: session.parentDashboardId ?? null,
       });
       savedId = saved?.id ?? null;
     } catch (err) {
