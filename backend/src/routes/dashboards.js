@@ -7,6 +7,8 @@ const {
   countThisMonth,
   createShareToken,
   revokeShareToken,
+  renameDashboard,
+  deleteDashboard,
 } = require('../services/dashboardStore');
 
 const router = express.Router();
@@ -51,6 +53,7 @@ router.get('/:id', requireUser(), async (req, res) => {
     if (!row) return res.status(404).json({ error: 'Not found' });
     res.json({
       id: row.id,
+      name: row.name ?? null,
       filename: row.filename,
       rowCount: row.row_count,
       dashboard: row.dashboard,
@@ -59,6 +62,42 @@ router.get('/:id', requireUser(), async (req, res) => {
     });
   } catch (err) {
     console.error('Get dashboard error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.patch('/:id', requireUser(), async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ error: 'Invalid dashboard id' });
+    }
+    const { name } = req.body || {};
+    if (typeof name !== 'string') {
+      return res.status(400).json({ error: 'Missing name' });
+    }
+    const ok = await renameDashboard(id, userId, name);
+    if (!ok) return res.status(404).json({ error: 'Not found' });
+    res.json({ ok: true, name: name.trim().slice(0, 120) });
+  } catch (err) {
+    console.error('Rename dashboard error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/:id', requireUser(), async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ error: 'Invalid dashboard id' });
+    }
+    const ok = await deleteDashboard(id, userId);
+    if (!ok) return res.status(404).json({ error: 'Not found' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Delete dashboard error:', err);
     res.status(500).json({ error: err.message });
   }
 });
