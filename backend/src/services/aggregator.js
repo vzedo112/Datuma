@@ -139,14 +139,25 @@ function aggregateChart(rows, chart, stats = null) {
   return sortData(data, type);
 }
 
-function attachChartData(rows, dashboard, stats = null) {
+function resolveDataset(chart, datasets) {
+  const names = Object.keys(datasets);
+  if (names.length === 0) return null;
+  if (chart.datasetName && datasets[chart.datasetName]) return datasets[chart.datasetName];
+  return datasets[names[0]];
+}
+
+function attachChartData(datasets, dashboard) {
   if (!dashboard || !Array.isArray(dashboard.charts)) return dashboard;
   return {
     ...dashboard,
-    charts: dashboard.charts.map(chart => ({
-      ...chart,
-      data: aggregateChart(rows, chart, stats),
-    })),
+    charts: dashboard.charts.map((chart) => {
+      const ds = resolveDataset(chart, datasets);
+      if (!ds) return { ...chart, data: [] };
+      return {
+        ...chart,
+        data: aggregateChart(ds.rows, chart, ds.stats),
+      };
+    }),
   };
 }
 

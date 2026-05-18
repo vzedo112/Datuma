@@ -5,31 +5,47 @@ const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-const SYSTEM_PROMPT = `You are a senior data analyst with 10 years of experience briefing non-technical executives on their business data. Your job is to look at a dataset and produce a dashboard that answers the most important business questions, written in plain English a finance director or operations manager would understand.
+const SYSTEM_PROMPT = `You are a senior data analyst with 10 years of experience briefing non-technical executives on their business data. Your job is to look at one or more datasets and produce a dashboard that answers the most important business questions, written in plain English a finance director or operations manager would understand.
 
 You are NOT a generic data tool. You are an analyst with opinions. You identify what matters and ignore what doesn't. Every metric, chart, and insight you produce must reference specific values from the actual data. Generic observations are useless and must be rejected.
 
-The user is a non-technical business decision maker — likely a finance manager, operations director, or department head. They want actionable answers, not statistical jargon. Write as if you are briefing them in a meeting.`;
+The user is a non-technical business decision maker — likely a finance manager, operations director, or department head. They want actionable answers, not statistical jargon. Write as if you are briefing them in a meeting.
 
-function buildPrompt(schema, sampleRows, stats, totalRows) {
-  return `A user has uploaded a dataset with ${totalRows} rows. Here is everything you need to analyse it.
+When the user uploads multiple datasets, treat them as related sources for ONE coherent brief. Identify whether they represent the same domain across time periods, different facets of the same operation, or independent areas — and produce insights that explicitly compare or combine them when it makes sense.`;
 
-## Schema
-${JSON.stringify(schema, null, 2)}
+function buildDatasetBlock(ds) {
+  return `### Dataset: "${ds.name}"
+Filename: ${ds.filename}
+Row count: ${ds.rowCount}
 
-## Pre-computed statistics for each column
-${JSON.stringify(stats, null, 2)}
+Schema:
+${JSON.stringify(ds.schema, null, 2)}
 
-## Representative sample of rows (beginning, middle, end of dataset)
-${JSON.stringify(sampleRows, null, 2)}
+Pre-computed statistics:
+${JSON.stringify(ds.stats, null, 2)}
+
+Representative sample of rows:
+${JSON.stringify(ds.sample, null, 2)}`;
+}
+
+function buildPrompt(datasets) {
+  const isMulti = datasets.length > 1;
+  const datasetNames = datasets.map((d) => `"${d.name}"`).join(', ');
+  const datasetBlocks = datasets.map(buildDatasetBlock).join('\n\n');
+
+  return `A user has uploaded ${datasets.length === 1 ? 'a dataset' : `${datasets.length} datasets (${datasetNames})`}. Here is everything you need to analyse ${datasets.length === 1 ? 'it' : 'them'}.
+
+## Datasets
+
+${datasetBlocks}
 
 ## Your task
 
-Step 1 — Identify the domain of this data (e.g. retail sales, HR, manufacturing output, financial transactions, inventory, marketing, healthcare operations). The domain shapes what matters.
+Step 1 — Identify the domain. ${isMulti ? 'Consider the datasets together — they may be related (e.g. orders + inventory; two years of the same metric; sales + returns).' : 'e.g. retail sales, HR, manufacturing output, financial transactions, inventory, marketing, healthcare operations.'} The domain shapes what matters.
 
-Step 2 — Identify the single most important business question this dataset can answer. Examples: "Which products drive the most profit?" "Where are operational bottlenecks?" "How does performance vary across regions?" Pick ONE primary question.
+Step 2 — Identify the single most important business question this data can answer. ${isMulti ? 'When datasets are related, the best question often spans them ("How does 2025 compare to 2024?", "Where does inventory under-serve demand?").' : 'Pick ONE primary question.'}
 
-Step 3 — Generate the dashboard. The dashboard must directly answer the primary question and surface 2-3 secondary insights.
+Step 3 — Generate the dashboard. The dashboard must directly answer the primary question and surface 2-3 secondary insights.${isMulti ? ' At least one insight MUST compare across datasets or combine signals from them.' : ''}
 
 ## Output format
 
@@ -42,8 +58,9 @@ Return ONLY valid JSON, no markdown, no commentary, in this exact structure:
   "metrics": [
     {
       "label": "Short metric name",
-      "computation": "Plain language description of how this is calculated (e.g. 'Sum of revenue column')",
+      "computation": "Plain language description of how this is calculated",
       "value": "The calculated value as a string, formatted with units/currency",
+      "datasetName": "Name of the dataset this metric was computed from, exactly as given above. Use \\"all\\" only when the metric combines all datasets.",
       "trend": "up | down | neutral — OPTIONAL, only include when there is a real period-over-period or before-vs-after comparison",
       "trendValue": "Specific change reference, e.g. 'up 12% vs first half' — OPTIONAL, only include alongside trend"
     }
@@ -52,8 +69,9 @@ Return ONLY valid JSON, no markdown, no commentary, in this exact structure:
     {
       "type": "line | bar | pie",
       "title": "Chart title",
-      "xAxis": "Exact column name from schema (the grouping dimension)",
-      "yAxis": "Exact column name from schema (the measure being aggregated). OMIT when aggregation is 'count'.",
+      "datasetName": "REQUIRED. Name of the dataset this chart visualises, exactly as given above. A chart can only reference ONE dataset.",
+      "xAxis": "Exact column name from that dataset's schema (the grouping dimension)",
+      "yAxis": "Exact column name from that dataset's schema (the measure being aggregated). OMIT when aggregation is 'count'.",
       "aggregation": "sum | avg | count | min | max | none",
       "bucket": "day | week | month | quarter | year | none — REQUIRED when xAxis is a date column and aggregation is not 'none'. Use 'none' when xAxis is already discrete or pre-bucketed.",
       "explanation": "Plain English explanation of what this shows AND why it matters for the business decision"
@@ -63,7 +81,8 @@ Return ONLY valid JSON, no markdown, no commentary, in this exact structure:
     {
       "severity": "info | warning | success",
       "title": "Short insight title",
-      "description": "Specific finding with actual numbers from the data and a recommended action or question to investigate"
+      "description": "Specific finding with actual numbers from the data and a recommended action or question to investigate",
+      "datasetName": "Name of the dataset this insight references, exactly as given above. Use \\"comparison\\" when the insight compares across two or more datasets, or \\"all\\" when it combines all of them."
     }
   ]
 }
@@ -71,34 +90,27 @@ Return ONLY valid JSON, no markdown, no commentary, in this exact structure:
 ## Rules — every single output must follow these
 
 1. Every metric value MUST be computed from the actual data using the pre-computed statistics provided. Use exact numbers, not estimates.
-2. Every chart MUST use xAxis and yAxis values that exist in the schema. Never invent column names.
-3. Every insight MUST reference specific values, comparisons, or anomalies from the data. Reject any insight that could apply to any dataset.
-4. Choose chart types thoughtfully:
+2. Every chart MUST use xAxis and yAxis values that exist in the schema of the dataset specified by "datasetName". Never invent column names. Never reference a column from a different dataset.
+3. Every chart MUST specify "datasetName" exactly matching one of the dataset names listed above.
+4. Every insight MUST reference specific values, comparisons, or anomalies from the data. Reject any insight that could apply to any dataset.
+5. Choose chart types thoughtfully:
    - line for time-series data (when x axis is a date or sequential)
    - bar for categorical comparisons
    - pie for proportional breakdowns (only when there are 6 or fewer categories)
-5. Choose the aggregation deliberately. The data may be transaction-level (many raw rows per category) or already-aggregated (one row per category). The aggregation tells the renderer how to reduce raw rows into chart data points, grouped by xAxis.
+6. Choose the aggregation deliberately. The data may be transaction-level (many raw rows per category) or already-aggregated (one row per category). The aggregation tells the renderer how to reduce raw rows into chart data points, grouped by xAxis.
    - "sum": total of yAxis per xAxis group. Use when measuring volume (revenue, units, hours).
    - "avg": average of yAxis per xAxis group. Use for rates, prices, scores.
-   - "count": number of rows per xAxis group. yAxis is NOT used — omit it. Use for frequency questions ("how many records per region").
+   - "count": number of rows per xAxis group. yAxis is NOT used — omit it. Use for frequency questions.
    - "min" / "max": smallest / largest yAxis value per group. Use for extremes (peak load, lowest stock).
-   - "none": use the raw yAxis values as-is, no grouping. Use ONLY when the data is already pre-aggregated to one row per xAxis value (e.g. one row per month with monthly total).
-6. yAxis MUST be a numeric column for aggregations sum, avg, min, max, and none. NEVER use a categorical or date column as yAxis with those aggregations. For "count", omit yAxis entirely.
-7. When xAxis is a date column and aggregation is not "none", you MUST specify a bucket so dates can be grouped sensibly:
-   - "day" for fine-grained daily trends (only if the date range is short).
-   - "week" for short-to-medium ranges where weekly cadence matters.
-   - "month" — the default choice for most multi-month transactional datasets.
-   - "quarter" or "year" for long ranges.
-   - "none" only when each xAxis date is already unique and pre-aggregated.
-   Bucketing one row per transaction would produce a meaningless 1-point-per-day chart; always pick the bucket that produces ~5-30 points for readability.
-8. Pie charts only make sense with aggregations that produce a quantitative slice (typically sum or count). Each slice must be a meaningful proportion.
-9. The "trend" and "trendValue" fields on metrics are OPTIONAL and must be used SPARINGLY. Only set them when the metric reflects a measurable CHANGE between two specific time periods or two distinct groups in the data.
-   - VALID examples (trend SHOULD be set): "August revenue €81k vs January €42k — up 93%", "Sales hires hired since 2024 average 3.0 rating vs 4.4 for pre-2024", "Q3 cost down 12% vs Q2".
-   - INVALID examples (trend MUST be omitted entirely — no exceptions): "Total revenue is €475k" (static total), "Median is €68k, mean is €76k" (distribution observation, not a change), "Average rating is 4.02/5" (static average), "Top earner is Orla at €148k" (extreme value), "25 employees across 6 departments" (static count).
-   Rule of thumb: if "trendValue" does not contain comparison language ("vs", "compared to", "up from", "down from", "year-over-year", or two specific named periods/groups), do NOT set "trend". Distribution facts, totals, counts, extremes, and rankings are NOT trends.
-10. Flag data quality issues (missing values, outliers, inconsistent values such as casing variants) in the insights when relevant.
-11. Return 3-5 metrics, 3-4 charts, and 2-3 insights.
-12. The most important chart must answer the primary question. Place it first.`;
+   - "none": use the raw yAxis values as-is, no grouping. Use ONLY when the data is already pre-aggregated to one row per xAxis value.
+7. yAxis MUST be a numeric column for aggregations sum, avg, min, max, and none. NEVER use a categorical or date column as yAxis with those aggregations. For "count", omit yAxis entirely.
+8. When xAxis is a date column and aggregation is not "none", you MUST specify a bucket (day/week/month/quarter/year). Bucketing one row per transaction would produce a meaningless 1-point-per-day chart; always pick the bucket that produces ~5-30 points for readability.
+9. Pie charts only make sense with aggregations that produce a quantitative slice (typically sum or count).
+10. The "trend" and "trendValue" fields on metrics are OPTIONAL and must be used SPARINGLY. Only set them when the metric reflects a measurable CHANGE between two specific time periods or two distinct groups in the data. If "trendValue" does not contain comparison language ("vs", "compared to", "up from", "down from", or two specific named periods/groups), do NOT set "trend". Distribution facts, totals, counts, extremes, and rankings are NOT trends.
+11. Flag data quality issues (missing values, outliers, inconsistent values such as casing variants) in the insights when relevant.
+12. Return 3-5 metrics, 3-4 charts, and 2-3 insights total across all datasets (NOT per dataset). Pick the most important ones overall.
+13. The most important chart must answer the primary question. Place it first.
+${isMulti ? '14. With multiple datasets, you MUST include at least one insight with datasetName "comparison" or "all" that explicitly relates the datasets to each other.\n' : ''}`;
 }
 
 function extractJson(text) {
@@ -123,7 +135,7 @@ async function callClaude(prompt, retryMessage = null, plan = 'starter') {
 
   const response = await client.messages.create({
     model: modelToUse,
-    max_tokens: 3000,
+    max_tokens: 4000,
     system: SYSTEM_PROMPT,
     messages,
   });
@@ -131,8 +143,10 @@ async function callClaude(prompt, retryMessage = null, plan = 'starter') {
   return response.content[0].text;
 }
 
-async function generateDashboard(schema, sampleRows, stats, totalRows, plan = 'starter') {
-  const prompt = buildPrompt(schema, sampleRows, stats, totalRows);
+async function generateDashboard(datasets, plan = 'starter') {
+  const prompt = buildPrompt(datasets);
+  const statsByDataset = Object.fromEntries(datasets.map((d) => [d.name, d.stats]));
+  const schemaByDataset = Object.fromEntries(datasets.map((d) => [d.name, d.schema]));
 
   let rawResponse = await callClaude(prompt, null, plan);
   let dashboard;
@@ -143,7 +157,7 @@ async function generateDashboard(schema, sampleRows, stats, totalRows, plan = 's
     throw new Error(`Claude returned invalid JSON: ${err.message}`);
   }
 
-  const validation = validateDashboard(dashboard, schema, stats);
+  const validation = validateDashboard(dashboard, schemaByDataset, statsByDataset);
 
   if (!validation.valid) {
     console.warn('Dashboard validation failed, retrying:', validation.errors);
@@ -156,7 +170,7 @@ async function generateDashboard(schema, sampleRows, stats, totalRows, plan = 's
     } catch (err) {
       throw new Error(`Claude retry returned invalid JSON: ${err.message}`);
     }
-    const retryValidation = validateDashboard(dashboard, schema, stats);
+    const retryValidation = validateDashboard(dashboard, schemaByDataset, statsByDataset);
     if (!retryValidation.valid) {
       console.error('Dashboard validation failed after retry:', retryValidation.errors);
     }
