@@ -11,7 +11,7 @@ function formatDatasetTag(name, multi) {
   return name;
 }
 
-export default function DashboardView({ dashboard, filename, rowCount, header, actions }) {
+export default function DashboardView({ dashboard, filename, rowCount, header, actions, viewRef }) {
   const datasets = dashboard?.datasets ?? [];
   const multi = datasets.length > 1;
 
@@ -21,7 +21,7 @@ export default function DashboardView({ dashboard, filename, rowCount, header, a
   }));
 
   return (
-    <div className="max-w-[1400px] mx-auto pb-16">
+    <div ref={viewRef} className="max-w-[1400px] mx-auto pb-16">
       <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-10">
         <div className="min-w-0">
           {header}
@@ -89,7 +89,10 @@ export default function DashboardView({ dashboard, filename, rowCount, header, a
         </div>
 
         {actions && (
-          <div className="flex items-center gap-2 shrink-0 whitespace-nowrap">
+          <div
+            data-export-hide="true"
+            className="flex items-center gap-2 shrink-0 whitespace-nowrap"
+          >
             {actions}
           </div>
         )}
