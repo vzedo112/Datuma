@@ -40,7 +40,7 @@ const plans = [
       "€1.50 per additional dashboard",
       "Set a hard monthly spend cap",
       "Up to 1.2M rows per upload",
-      "Multiple datasets per dashboard (unlimited)",
+      "Multiple datasets per dashboard (up to 5)",
       "Saved history & re-runs",
       "Email support, 1 business day",
     ],
