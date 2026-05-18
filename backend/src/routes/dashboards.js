@@ -1,5 +1,6 @@
 const express = require('express');
-const { requireUser, getUserId } = require('../middleware/auth');
+const { requireUser, getUserId, getUserPlan } = require('../middleware/auth');
+const { getPlan, serializePlan } = require('../services/plans');
 const {
   listDashboards,
   getDashboard,
@@ -22,8 +23,15 @@ router.get('/', requireUser(), async (req, res) => {
 router.get('/usage', requireUser(), async (req, res) => {
   try {
     const userId = getUserId(req);
-    const used = await countThisMonth(userId);
-    res.json({ used, limit: 3, plan: 'starter' });
+    const [used, planKey] = await Promise.all([
+      countThisMonth(userId),
+      getUserPlan(req),
+    ]);
+    const plan = getPlan(planKey);
+    res.json({
+      used,
+      plan: serializePlan(plan),
+    });
   } catch (err) {
     console.error('Usage error:', err);
     res.status(500).json({ error: err.message });
