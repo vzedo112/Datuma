@@ -55,7 +55,19 @@ export default function Sidebar() {
   }, []);
 
   const used = usage?.used ?? null;
-  const limit = usage?.limit ?? 3;
+  const plan = usage?.plan ?? null;
+  const planName = plan?.name ?? "Free plan";
+  const planKey = plan?.key ?? "starter";
+  const limit = plan?.monthlyIncluded ?? null; // null = unlimited
+  const showUpgrade = planKey === "starter" || planKey === "pro";
+  const usageLabel =
+    used === null
+      ? limit
+        ? `Up to ${limit} dashboards a month.`
+        : "Unlimited dashboards."
+      : limit === null
+      ? `${used} dashboards this month.`
+      : `${used} of ${limit} dashboards used this month.`;
 
   return (
     <>
@@ -124,20 +136,18 @@ export default function Sidebar() {
           <div className="px-4 py-4 border-t border-border">
             <div className="rounded-lg border border-border bg-background p-4">
               <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-2">
-                Free plan
+                {planName}
               </p>
-              <p className="text-sm mb-3">
-                {used !== null
-                  ? `${used} of ${limit} dashboards used this month.`
-                  : `Up to ${limit} dashboards a month.`}
-              </p>
-              <Link
-                to="/pricing"
-                onClick={close}
-                className="block text-center text-xs font-medium bg-foreground text-background rounded-md py-2 hover:bg-foreground/90"
-              >
-                Upgrade
-              </Link>
+              <p className="text-sm mb-3">{usageLabel}</p>
+              {showUpgrade && (
+                <Link
+                  to="/pricing"
+                  onClick={close}
+                  className="block text-center text-xs font-medium bg-foreground text-background rounded-md py-2 hover:bg-foreground/90"
+                >
+                  Upgrade
+                </Link>
+              )}
             </div>
             <div className="mt-3 space-y-1">
               <button
