@@ -33,11 +33,14 @@ export async function uploadFile(file) {
   return response.data;
 }
 
-export async function analyzeUpload(files, datasetNames) {
+export async function analyzeUpload(files, datasetNames, parentDashboardId) {
   const form = new FormData();
   for (const f of files) form.append("files", f);
   if (datasetNames && datasetNames.length > 0) {
     form.append("datasetNames", JSON.stringify(datasetNames));
+  }
+  if (parentDashboardId) {
+    form.append("parentDashboardId", String(parentDashboardId));
   }
   const response = await api.post("/api/upload/analyze", form, {
     headers: { "Content-Type": "multipart/form-data" },
