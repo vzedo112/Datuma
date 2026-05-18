@@ -10,8 +10,27 @@ import {
   CalendarClock,
   Layers,
   Sigma,
+  Key,
+  Link2,
+  History as HistoryIcon,
 } from "lucide-react";
 import { cn } from "../../lib/cn";
+
+function formatRelative(iso) {
+  if (!iso) return "";
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "";
+  const diff = Math.max(0, Date.now() - then);
+  const mins = Math.round(diff / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.round(days / 30);
+  return `${months}mo ago`;
+}
 
 const SEVERITY = {
   ok: {
@@ -40,7 +59,8 @@ function hasFindings(q) {
     (q?.duplicateRows?.count || 0) > 0 ||
     (q?.dateFormats?.length || 0) > 0 ||
     (q?.mixedTypes?.length || 0) > 0 ||
-    (q?.outliers?.length || 0) > 0
+    (q?.outliers?.length || 0) > 0 ||
+    (q?.primaryKeyCandidates?.length || 0) > 0
   );
 }
 
@@ -144,6 +164,36 @@ function MixedTypesSection({ rows }) {
   );
 }
 
+function PKCandidatesSection({ rows }) {
+  if (!rows || rows.length === 0) return null;
+  return (
+    <Section icon={Key} title="Likely identifier columns" count={`${rows.length} candidate${rows.length === 1 ? "" : "s"}`}>
+      <p className="text-xs text-muted-foreground leading-relaxed mb-2">
+        Columns that look like unique IDs. Useful for spotting overlap between files or repeat uploads.
+      </p>
+      <ul className="flex flex-wrap gap-1.5">
+        {rows.map((r) => (
+          <li
+            key={r.column}
+            className={cn(
+              "inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-mono",
+              r.confidence === "high"
+                ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                : "bg-accent text-foreground border border-border"
+            )}
+            title={`${(r.uniqueRatio * 100).toFixed(1)}% unique across ${r.nonNull.toLocaleString()} non-null rows`}
+          >
+            {r.column}
+            <span className="text-muted-foreground/80">
+              {(r.uniqueRatio * 100).toFixed(0)}%
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Section>
+  );
+}
+
 function OutliersSection({ rows }) {
   if (!rows || rows.length === 0) return null;
   return (
@@ -217,6 +267,7 @@ function DatasetCard({ ds, defaultOpen }) {
               <DateFormatSection rows={q.dateFormats} />
               <MixedTypesSection rows={q.mixedTypes} />
               <OutliersSection rows={q.outliers} />
+              <PKCandidatesSection rows={q.primaryKeyCandidates} />
             </>
           )}
         </div>
@@ -225,7 +276,93 @@ function DatasetCard({ ds, defaultOpen }) {
   );
 }
 
-export default function DataQualityReport({ datasets, onBack, onProceed, generating }) {
+function CrossFileBanner({ findings }) {
+  if (!findings || findings.length === 0) return null;
+  return (
+    <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-5 space-y-3">
+      <div className="flex items-center gap-2.5">
+        <Link2 className="w-4 h-4 text-amber-700" />
+        <h3 className="font-medium text-amber-900">Overlap between files</h3>
+        <span className="font-mono text-[10px] uppercase tracking-widest text-amber-700 ml-auto">
+          {findings.length} pair{findings.length === 1 ? "" : "s"}
+        </span>
+      </div>
+      <p className="text-xs text-amber-900/80 leading-relaxed">
+        Some rows appear in more than one of the files you uploaded. Datuma will keep
+        them as separate datasets — duplicates are not removed. Review before generating.
+      </p>
+      <ul className="space-y-2">
+        {findings.map((f, i) => (
+          <li key={i} className="text-sm flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-900">
+              {f.between[0]}
+            </span>
+            <span className="text-amber-900/70">×</span>
+            <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-900">
+              {f.between[1]}
+            </span>
+            <span className="text-amber-900">
+              {f.overlappingRows.toLocaleString()} shared row{f.overlappingRows === 1 ? "" : "s"}
+              {typeof f.overlapPct === "number" ? ` · ${f.overlapPct}%` : ""}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function CrossUploadBanner({ findings }) {
+  if (!findings || findings.length === 0) return null;
+  return (
+    <div className="rounded-xl border border-sky-200 bg-sky-50/60 p-5 space-y-3">
+      <div className="flex items-center gap-2.5">
+        <HistoryIcon className="w-4 h-4 text-sky-700" />
+        <h3 className="font-medium text-sky-900">Looks familiar</h3>
+        <span className="font-mono text-[10px] uppercase tracking-widest text-sky-700 ml-auto">
+          {findings.length} match{findings.length === 1 ? "" : "es"}
+        </span>
+      </div>
+      <p className="text-xs text-sky-900/80 leading-relaxed">
+        This upload overlaps with dashboards you've generated before. Datuma won't merge
+        them automatically — generating now creates a new, independent dashboard.
+      </p>
+      <ul className="space-y-2.5">
+        {findings.map((f, i) => (
+          <li key={i} className="text-sm">
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <span className="font-medium text-sky-900 truncate max-w-[260px]">
+                {f.priorDashboardName}
+              </span>
+              <span className="font-mono text-[10px] uppercase tracking-widest text-sky-700">
+                {formatRelative(f.priorCreatedAt)}
+              </span>
+              <span className="ml-auto font-mono text-xs text-sky-900">
+                {f.matchPct}% sample match
+              </span>
+            </div>
+            <p className="text-xs text-sky-900/80 mt-1 leading-relaxed">
+              {f.matched} of {f.sampleSize} sampled rows from "{f.priorDataset}" appear in
+              your "{f.currentDataset}" file.
+            </p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export default function DataQualityReport({
+  datasets,
+  crossFileFindings,
+  crossUploadFindings,
+  onBack,
+  onProceed,
+  generating,
+}) {
+  const hasOverlap =
+    (crossFileFindings?.length || 0) > 0 || (crossUploadFindings?.length || 0) > 0;
+
   return (
     <div className="max-w-3xl mx-auto pt-2 pb-16">
       <div className="mb-8">
@@ -240,6 +377,13 @@ export default function DataQualityReport({ datasets, onBack, onProceed, generat
           modify your data — these checks are read-only.
         </p>
       </div>
+
+      {hasOverlap && (
+        <div className="space-y-3 mb-6">
+          <CrossUploadBanner findings={crossUploadFindings} />
+          <CrossFileBanner findings={crossFileFindings} />
+        </div>
+      )}
 
       <div className="space-y-3 mb-8">
         {datasets.map((ds, i) => (

@@ -179,6 +179,8 @@ export default function Upload() {
     return (
       <DataQualityReport
         datasets={uploadResult.datasets}
+        crossFileFindings={uploadResult.crossFileFindings}
+        crossUploadFindings={uploadResult.crossUploadFindings}
         onBack={backToPick}
         onProceed={startGenerate}
         generating={false}
