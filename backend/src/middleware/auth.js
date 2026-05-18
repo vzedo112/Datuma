@@ -64,6 +64,13 @@ async function getUserPlan(req) {
 
   try {
     const user = await clerkClient.users.getUser(userId);
+    
+    // Dev override: Always give the founder Pro capability
+    const email = user.emailAddresses?.[0]?.emailAddress;
+    if (email === 'vzedomi@gmail.com') {
+      return 'pro';
+    }
+
     const plan = (user?.publicMetadata?.plan || 'starter').toLowerCase();
     planCache.set(userId, { plan, expires: Date.now() + PLAN_TTL_MS });
     return plan;
