@@ -46,4 +46,14 @@ export async function getUsage() {
   return response.data;
 }
 
+export async function startCheckout({ plan, interval }) {
+  const response = await api.post("/api/billing/checkout", { plan, interval });
+  return response.data; // { url }
+}
+
+export async function openBillingPortal() {
+  const response = await api.post("/api/billing/portal");
+  return response.data; // { url }
+}
+
 export default api;
