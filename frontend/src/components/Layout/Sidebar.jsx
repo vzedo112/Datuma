@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Link } from "react-router-dom";
+import { getUsage } from "../../services/api";
 import {
   Home,
   Upload,
@@ -35,7 +36,26 @@ function NavItem({ to, icon: Icon, children, onClick, end }) {
 
 export default function Sidebar() {
   const [open, setOpen] = useState(false);
+  const [usage, setUsage] = useState(null);
   const close = () => setOpen(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await getUsage();
+        if (!cancelled) setUsage(data);
+      } catch {
+        // Persistence not available — leave usage null so we render a graceful fallback.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const used = usage?.used ?? null;
+  const limit = usage?.limit ?? 3;
 
   return (
     <>
@@ -107,7 +127,9 @@ export default function Sidebar() {
                 Free plan
               </p>
               <p className="text-sm mb-3">
-                2 of 3 dashboards used this month.
+                {used !== null
+                  ? `${used} of ${limit} dashboards used this month.`
+                  : `Up to ${limit} dashboards a month.`}
               </p>
               <Link
                 to="/pricing"
