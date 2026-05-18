@@ -5,6 +5,7 @@ const uploadRoutes = require('./routes/upload');
 const dashboardRoutes = require('./routes/dashboards');
 const billingRoutes = require('./routes/billing');
 const webhookRoutes = require('./routes/webhooks');
+const shareRoutes = require('./routes/share');
 const { withClerk } = require('./middleware/auth');
 const db = require('./db');
 
@@ -28,6 +29,7 @@ app.get('/', (req, res) => {
 app.use('/api/upload', uploadRoutes);
 app.use('/api/dashboards', dashboardRoutes);
 app.use('/api/billing', billingRoutes);
+app.use('/api/share', shareRoutes);
 
 db.init().finally(() => {
   app.listen(PORT, () => {
