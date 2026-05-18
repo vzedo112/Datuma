@@ -43,4 +43,40 @@ function getUserId(req) {
   return auth?.userId ?? null;
 }
 
-module.exports = { withClerk, requireUser, getUserId, isClerkConfigured };
+// In-memory cache for plan lookups so we don't hit Clerk on every request.
+// 60 second TTL — short enough that Stripe webhook updates show up quickly.
+const planCache = new Map();
+const PLAN_TTL_MS = 60_000;
+
+async function getUserPlan(req) {
+  if (!isClerkConfigured) return 'starter';
+  const userId = getUserId(req);
+  if (!userId) return 'starter';
+
+  const cached = planCache.get(userId);
+  if (cached && cached.expires > Date.now()) return cached.plan;
+
+  try {
+    const user = await clerkClient.users.getUser(userId);
+    const plan = (user?.publicMetadata?.plan || 'starter').toLowerCase();
+    planCache.set(userId, { plan, expires: Date.now() + PLAN_TTL_MS });
+    return plan;
+  } catch (err) {
+    console.warn('[auth] failed to fetch user plan:', err.message);
+    return 'starter';
+  }
+}
+
+function invalidatePlanCache(userId) {
+  if (userId) planCache.delete(userId);
+  else planCache.clear();
+}
+
+module.exports = {
+  withClerk,
+  requireUser,
+  getUserId,
+  getUserPlan,
+  invalidatePlanCache,
+  isClerkConfigured,
+};
