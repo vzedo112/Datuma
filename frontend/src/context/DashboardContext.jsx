@@ -6,6 +6,7 @@ export function DashboardProvider({ children }) {
   const [dashboard, setDashboard] = useState(null);
   const [dashboardId, setDashboardId] = useState(null);
   const [shareToken, setShareToken] = useState(null);
+  const [datasets, setDatasets] = useState(null);
   const [filename, setFilename] = useState(null);
   const [rowCount, setRowCount] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -15,6 +16,7 @@ export function DashboardProvider({ children }) {
     setDashboard(result?.dashboard ?? null);
     setDashboardId(result?.id ?? null);
     setShareToken(result?.shareToken ?? null);
+    setDatasets(result?.datasets ?? result?.dashboard?.datasets ?? null);
     setFilename(result?.filename ?? null);
     setRowCount(result?.rowCount ?? null);
     setError(null);
@@ -24,6 +26,7 @@ export function DashboardProvider({ children }) {
     setDashboard(null);
     setDashboardId(null);
     setShareToken(null);
+    setDatasets(null);
     setFilename(null);
     setRowCount(null);
     setLoading(false);
@@ -37,6 +40,7 @@ export function DashboardProvider({ children }) {
         dashboardId,
         shareToken,
         setShareToken,
+        datasets,
         filename,
         rowCount,
         loading,
