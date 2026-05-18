@@ -15,7 +15,7 @@ async function saveDashboard({ userId, filename, rowCount, dashboard }) {
 async function listDashboards(userId, { limit = 50 } = {}) {
   if (!db.isReady() || !userId) return [];
   const result = await db.query(
-    `SELECT id, filename, row_count, created_at,
+    `SELECT id, name, filename, row_count, created_at,
             dashboard->>'title' AS title,
             dashboard->>'domain' AS domain
      FROM dashboards
@@ -27,10 +27,34 @@ async function listDashboards(userId, { limit = 50 } = {}) {
   return result.rows;
 }
 
+async function renameDashboard(id, userId, name) {
+  if (!db.isReady() || !userId) return false;
+  const trimmed = (name ?? '').toString().trim().slice(0, 120);
+  const result = await db.query(
+    `UPDATE dashboards
+     SET name = $1
+     WHERE id = $2 AND user_id = $3
+     RETURNING id`,
+    [trimmed || null, id, userId]
+  );
+  return result.rowCount > 0;
+}
+
+async function deleteDashboard(id, userId) {
+  if (!db.isReady() || !userId) return false;
+  const result = await db.query(
+    `DELETE FROM dashboards
+     WHERE id = $1 AND user_id = $2
+     RETURNING id`,
+    [id, userId]
+  );
+  return result.rowCount > 0;
+}
+
 async function getDashboard(id, userId) {
   if (!db.isReady() || !userId) return null;
   const result = await db.query(
-    `SELECT id, filename, row_count, dashboard, created_at, share_token
+    `SELECT id, name, filename, row_count, dashboard, created_at, share_token
      FROM dashboards
      WHERE id = $1 AND user_id = $2`,
     [id, userId]
@@ -101,4 +125,6 @@ module.exports = {
   createShareToken,
   revokeShareToken,
   getDashboardByToken,
+  renameDashboard,
+  deleteDashboard,
 };
