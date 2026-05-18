@@ -5,6 +5,7 @@ const { getDatasetStats, getRepresentativeSample } = require('../services/stats'
 const { generateDashboard } = require('../services/claude');
 const { attachChartData } = require('../services/aggregator');
 const { requireUser, getUserId } = require('../middleware/auth');
+const { saveDashboard } = require('../services/dashboardStore');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -28,7 +29,22 @@ router.post('/', requireUser(), upload.single('file'), async (req, res) => {
     const dashboard = await generateDashboard(schema, sampleRows, stats, rows.length);
     const dashboardWithData = attachChartData(rows, dashboard, stats);
 
+    // Persist asynchronously — failure here shouldn't block the response.
+    let savedId = null;
+    try {
+      const saved = await saveDashboard({
+        userId,
+        filename: req.file.originalname,
+        rowCount: rows.length,
+        dashboard: dashboardWithData,
+      });
+      savedId = saved?.id ?? null;
+    } catch (err) {
+      console.warn('Failed to persist dashboard:', err.message);
+    }
+
     res.json({
+      id: savedId,
       filename: req.file.originalname,
       rowCount: rows.length,
       dashboard: dashboardWithData,
