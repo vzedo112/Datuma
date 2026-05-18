@@ -4,6 +4,8 @@ const DashboardContext = createContext(null);
 
 export function DashboardProvider({ children }) {
   const [dashboard, setDashboard] = useState(null);
+  const [dashboardId, setDashboardId] = useState(null);
+  const [shareToken, setShareToken] = useState(null);
   const [filename, setFilename] = useState(null);
   const [rowCount, setRowCount] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -11,6 +13,8 @@ export function DashboardProvider({ children }) {
 
   const setResult = useCallback((result) => {
     setDashboard(result?.dashboard ?? null);
+    setDashboardId(result?.id ?? null);
+    setShareToken(result?.shareToken ?? null);
     setFilename(result?.filename ?? null);
     setRowCount(result?.rowCount ?? null);
     setError(null);
@@ -18,6 +22,8 @@ export function DashboardProvider({ children }) {
 
   const reset = useCallback(() => {
     setDashboard(null);
+    setDashboardId(null);
+    setShareToken(null);
     setFilename(null);
     setRowCount(null);
     setLoading(false);
@@ -28,6 +34,9 @@ export function DashboardProvider({ children }) {
     <DashboardContext.Provider
       value={{
         dashboard,
+        dashboardId,
+        shareToken,
+        setShareToken,
         filename,
         rowCount,
         loading,
