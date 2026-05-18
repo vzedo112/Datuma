@@ -18,6 +18,7 @@ import AuthSetupNotice from "./pages/AuthSetupNotice";
 import AppLayout from "./components/Layout/AppLayout";
 import Upload from "./pages/Upload";
 import Dashboard from "./pages/Dashboard";
+import History from "./pages/History";
 
 function Placeholder({ title }) {
   return (
@@ -73,7 +74,8 @@ function Routing() {
           <Route path="/app" element={<ProtectedAppLayout />}>
             <Route index element={<Upload />} />
             <Route path="dashboard" element={<Dashboard />} />
-            <Route path="history" element={<Placeholder title="Upload history" />} />
+            <Route path="dashboard/:id" element={<Dashboard />} />
+            <Route path="history" element={<History />} />
             <Route path="settings" element={<Placeholder title="Settings" />} />
           </Route>
         </>
@@ -84,7 +86,8 @@ function Routing() {
           <Route path="/app" element={<AppLayout />}>
             <Route index element={<Upload />} />
             <Route path="dashboard" element={<Dashboard />} />
-            <Route path="history" element={<Placeholder title="Upload history" />} />
+            <Route path="dashboard/:id" element={<Dashboard />} />
+            <Route path="history" element={<History />} />
             <Route path="settings" element={<Placeholder title="Settings" />} />
           </Route>
         </>
