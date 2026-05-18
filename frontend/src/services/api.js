@@ -1,7 +1,9 @@
 import axios from "axios";
 
+const baseURL = process.env.REACT_APP_API_URL || "http://localhost:5001";
+
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || "http://localhost:5001",
+  baseURL,
 });
 
 let getTokenFn = null;
@@ -54,6 +56,22 @@ export async function startCheckout({ plan, interval }) {
 export async function openBillingPortal() {
   const response = await api.post("/api/billing/portal");
   return response.data; // { url }
+}
+
+export async function createShareLink(id) {
+  const response = await api.post(`/api/dashboards/${id}/share`);
+  return response.data; // { token }
+}
+
+export async function revokeShareLink(id) {
+  const response = await api.delete(`/api/dashboards/${id}/share`);
+  return response.data; // { ok: true }
+}
+
+export async function getSharedDashboard(token) {
+  // Public endpoint — bypass the auth interceptor by using a bare axios call.
+  const response = await axios.get(`${baseURL}/api/share/${token}`);
+  return response.data;
 }
 
 export default api;
