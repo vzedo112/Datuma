@@ -12,6 +12,7 @@ import {
   Loader2,
   ExternalLink,
 } from "lucide-react";
+import { useUser, useClerk } from "@clerk/clerk-react";
 import { getUsage, openBillingPortal } from "../services/api";
 import { isClerkConfigured } from "../lib/auth";
 import ClerkAccountSection from "../components/Settings/ClerkAccountSection";
@@ -282,9 +283,6 @@ export default function Settings() {
 // --- Danger zone (Clerk-aware) ---
 
 function ClerkDangerActions() {
-  // Inline import to keep this file friendly when Clerk isn't configured.
-  // eslint-disable-next-line global-require
-  const { useClerk, useUser } = require("@clerk/clerk-react");
   const { signOut } = useClerk();
   const { user } = useUser();
 
