@@ -4,8 +4,9 @@ const { parseFile, getSchema } = require('../services/parser');
 const { getDatasetStats, getRepresentativeSample } = require('../services/stats');
 const { generateDashboard } = require('../services/claude');
 const { attachChartData } = require('../services/aggregator');
-const { requireUser, getUserId } = require('../middleware/auth');
-const { saveDashboard } = require('../services/dashboardStore');
+const { requireUser, getUserId, getUserPlan } = require('../middleware/auth');
+const { saveDashboard, countThisMonth } = require('../services/dashboardStore');
+const { getPlan } = require('../services/plans');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -17,9 +18,40 @@ router.post('/', requireUser(), upload.single('file'), async (req, res) => {
     }
 
     const userId = getUserId(req);
+    const planKey = await getUserPlan(req);
+    const plan = getPlan(planKey);
+
     const rows = parseFile(req.file);
     if (rows.length === 0) {
       return res.status(400).json({ error: 'File contains no data' });
+    }
+
+    // Row-count cap (per plan)
+    if (rows.length > plan.rowLimit) {
+      return res.status(413).json({
+        error: `File has ${rows.length.toLocaleString()} rows, but your ${plan.name} plan allows up to ${plan.rowLimit.toLocaleString()} per file.`,
+        code: 'ROW_LIMIT_EXCEEDED',
+        rowCount: rows.length,
+        rowLimit: plan.rowLimit,
+        plan: plan.key,
+      });
+    }
+
+    // Monthly quota check
+    const used = await countThisMonth(userId);
+    const monthlyIncluded = plan.monthlyIncluded;
+    const overInclusive =
+      Number.isFinite(monthlyIncluded) && used >= monthlyIncluded;
+
+    if (overInclusive && plan.overageEuros === null) {
+      // Hard cap (Starter)
+      return res.status(402).json({
+        error: `You've used all ${monthlyIncluded} dashboards in your ${plan.name} plan this month. Upgrade to keep going.`,
+        code: 'QUOTA_EXCEEDED',
+        used,
+        limit: monthlyIncluded,
+        plan: plan.key,
+      });
     }
 
     const schema = getSchema(rows);
@@ -29,7 +61,6 @@ router.post('/', requireUser(), upload.single('file'), async (req, res) => {
     const dashboard = await generateDashboard(schema, sampleRows, stats, rows.length);
     const dashboardWithData = attachChartData(rows, dashboard, stats);
 
-    // Persist asynchronously — failure here shouldn't block the response.
     let savedId = null;
     try {
       const saved = await saveDashboard({
@@ -49,6 +80,9 @@ router.post('/', requireUser(), upload.single('file'), async (req, res) => {
       rowCount: rows.length,
       dashboard: dashboardWithData,
       userId,
+      overage: overInclusive
+        ? { isOverage: true, overageEuros: plan.overageEuros, used: used + 1 }
+        : null,
     });
   } catch (err) {
     console.error('Upload error:', err);
