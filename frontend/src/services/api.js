@@ -33,6 +33,36 @@ export async function uploadFile(file) {
   return response.data;
 }
 
+export async function analyzeUpload(files, datasetNames) {
+  const form = new FormData();
+  for (const f of files) form.append("files", f);
+  if (datasetNames && datasetNames.length > 0) {
+    form.append("datasetNames", JSON.stringify(datasetNames));
+  }
+  const response = await api.post("/api/upload/analyze", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return response.data;
+}
+
+export async function generateDashboardFromUpload(uploadId, datasetNames) {
+  const response = await api.post("/api/upload/generate", {
+    uploadId,
+    datasetNames,
+  });
+  return response.data;
+}
+
+export async function renameDashboard(id, name) {
+  const response = await api.patch(`/api/dashboards/${id}`, { name });
+  return response.data;
+}
+
+export async function deleteDashboard(id) {
+  const response = await api.delete(`/api/dashboards/${id}`);
+  return response.data;
+}
+
 export async function listDashboards() {
   const response = await api.get("/api/dashboards");
   return response.data.items ?? [];
