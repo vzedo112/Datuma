@@ -20,6 +20,7 @@ import Upload from "./pages/Upload";
 import Dashboard from "./pages/Dashboard";
 import History from "./pages/History";
 import Settings from "./pages/Settings";
+import SharedDashboard from "./pages/SharedDashboard";
 
 function TokenSync() {
   const { getToken } = useAuth();
@@ -54,6 +55,7 @@ function Routing() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/pricing" element={<Pricing />} />
+      <Route path="/share/:token" element={<SharedDashboard />} />
       {isClerkConfigured ? (
         <>
           <Route path="/sign-in/*" element={<SignInPage />} />
