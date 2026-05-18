@@ -9,7 +9,6 @@ import {
   Gauge,
   Eye,
   LineChart,
-  Layers,
 } from "lucide-react";
 import MarketingNav from "../components/Layout/MarketingNav";
 import MarketingFooter from "../components/Layout/MarketingFooter";
@@ -153,7 +152,7 @@ function Hero() {
               visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"
             }`}
           >
-            Drop a CSV or Excel file. Datuma reads it like a senior analyst would
+            Drop a CSV, Excel file, or multiple files to blend them. Datuma reads your data like a senior analyst would
             and hands you a one-page dashboard with the numbers, the trends, and
             the things worth a meeting.
           </p>

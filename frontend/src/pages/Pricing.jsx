@@ -18,7 +18,8 @@ const plans = [
     href: "/app",
     features: [
       "3 dashboards per month",
-      "Up to 50,000 rows per file",
+      "Up to 50,000 rows per upload",
+      "Multiple datasets per dashboard (up to 2)",
       "CSV + Excel uploads",
       "PDF + PNG export",
     ],
@@ -38,7 +39,8 @@ const plans = [
       "20 dashboards included each month",
       "€1.50 per additional dashboard",
       "Set a hard monthly spend cap",
-      "Up to 1.2M rows per file",
+      "Up to 1.2M rows per upload",
+      "Multiple datasets per dashboard (unlimited)",
       "Saved history & re-runs",
       "Email support, 1 business day",
     ],
@@ -58,7 +60,8 @@ const plans = [
       "€1.00 per additional dashboard",
       "Shared workspace + role permissions",
       "Custom branding on exports",
-      "Up to 1.2M rows per file",
+      "Up to 1.2M rows per upload",
+      "Multiple datasets per dashboard (unlimited)",
       "Priority email support",
     ],
   },
@@ -73,6 +76,7 @@ const plans = [
     features: [
       "Everything in Team",
       "Unlimited seats + dashboards",
+      "Multiple datasets per dashboard (unlimited)",
       "EU/US data residency",
       "SSO + SCIM provisioning",
       "Audit logs · DPA · SOC 2",
@@ -269,6 +273,10 @@ const faqs = [
     a: "Pro includes 20 dashboards each month. Beyond that, each additional dashboard is €1.50, billed at the end of the cycle. You can set a hard monthly spend cap — once you hit it, uploads pause until next month or until you raise it.",
   },
   {
+    q: "Can I upload multiple files at once?",
+    a: "Yes. Datuma excels at blending multi-dataset files. You can drop multiple files into the analyzer and it will identify relationships across them.",
+  },
+  {
     q: "What file types can I upload?",
     a: "CSV (any delimiter), .xlsx, and .xls. We auto-detect the encoding and the first sheet of Excel files.",
   },
@@ -278,7 +286,7 @@ const faqs = [
   },
   {
     q: "Is there a row limit?",
-    a: "Starter is capped at 50,000 rows per file. Pro and Enterprise handle up to 1.2 million rows. Files larger than 60 MB should be compressed or split first.",
+    a: "Starter is capped at 50,000 rows per upload (across all files). Pro and Enterprise handle up to 1.2 million rows. Files larger than 60 MB should be compressed or split first.",
   },
   {
     q: "Can I cancel anytime?",
