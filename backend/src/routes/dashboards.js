@@ -5,6 +5,8 @@ const {
   listDashboards,
   getDashboard,
   countThisMonth,
+  createShareToken,
+  revokeShareToken,
 } = require('../services/dashboardStore');
 
 const router = express.Router();
@@ -53,9 +55,42 @@ router.get('/:id', requireUser(), async (req, res) => {
       rowCount: row.row_count,
       dashboard: row.dashboard,
       createdAt: row.created_at,
+      shareToken: row.share_token ?? null,
     });
   } catch (err) {
     console.error('Get dashboard error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/:id/share', requireUser(), async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ error: 'Invalid dashboard id' });
+    }
+    const token = await createShareToken(id, userId);
+    if (!token) return res.status(404).json({ error: 'Not found' });
+    res.json({ token });
+  } catch (err) {
+    console.error('Create share token error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/:id/share', requireUser(), async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ error: 'Invalid dashboard id' });
+    }
+    const ok = await revokeShareToken(id, userId);
+    if (!ok) return res.status(404).json({ error: 'Not found' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Revoke share token error:', err);
     res.status(500).json({ error: err.message });
   }
 });
