@@ -39,7 +39,6 @@ function requireUser() {
     if (!auth || !auth.userId) {
       return res.status(401).json({ error: 'Unauthorized: Missing or invalid Clerk token' });
     }
-    req.auth = auth;
     next();
   };
 }
