@@ -8,7 +8,7 @@ const trendStyles = {
 };
 const trendIcons = { up: ArrowUpRight, down: ArrowDownRight, neutral: Minus };
 
-export default function MetricCard({ label, value, trend, trendValue, computation }) {
+export default function MetricCard({ label, value, trend, trendValue, computation, datasetTag }) {
   const Icon = trend ? trendIcons[trend] : null;
 
   return (
@@ -36,6 +36,12 @@ export default function MetricCard({ label, value, trend, trendValue, computatio
 
       {computation && (
         <p className="text-xs text-muted-foreground leading-relaxed">{computation}</p>
+      )}
+
+      {datasetTag && (
+        <p className="mt-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground truncate">
+          {datasetTag}
+        </p>
       )}
     </div>
   );
