@@ -1,12 +1,15 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { ArrowRight, Check } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { ArrowRight, Check, Loader2 } from "lucide-react";
 import MarketingNav from "../components/Layout/MarketingNav";
 import MarketingFooter from "../components/Layout/MarketingFooter";
 import { cn } from "../lib/cn";
+import { startCheckout } from "../services/api";
+import { isClerkConfigured } from "../lib/auth";
 
 const plans = [
   {
+    key: "starter",
     name: "Starter",
     description: "For one-off curiosity and side projects.",
     monthly: 0,
@@ -21,6 +24,7 @@ const plans = [
     ],
   },
   {
+    key: "pro",
     name: "Pro",
     description: "For analysts, founders, and freelancers.",
     monthly: 20,
@@ -40,6 +44,7 @@ const plans = [
     ],
   },
   {
+    key: "team",
     name: "Team",
     description: "For small teams sharing a workspace.",
     monthly: 99,
@@ -58,12 +63,13 @@ const plans = [
     ],
   },
   {
+    key: "enterprise",
     name: "Enterprise",
     description: "For finance ops, BI teams, and compliance-heavy orgs.",
     monthly: null,
     annual: null,
     cta: "Talk to sales",
-    href: "#",
+    href: "mailto:hello@datuma.app",
     features: [
       "Everything in Team",
       "Unlimited seats + dashboards",
@@ -122,8 +128,59 @@ function Toggle({ annual, setAnnual }) {
 }
 
 function Plans({ annual }) {
+  const [loadingKey, setLoadingKey] = useState(null);
+  const [error, setError] = useState(null);
+  const navigate = useNavigate();
+
+  const handleCta = async (p) => {
+    setError(null);
+
+    // Starter = just go to the app (sign-in flow handled by route gating).
+    if (p.key === "starter") {
+      navigate("/app");
+      return;
+    }
+    // Enterprise = mailto.
+    if (p.key === "enterprise") {
+      window.location.href = p.href;
+      return;
+    }
+    // Pro / Team — need to be signed in to checkout.
+    if (!isClerkConfigured) {
+      navigate("/app");
+      return;
+    }
+    try {
+      setLoadingKey(p.key);
+      const { url } = await startCheckout({
+        plan: p.key,
+        interval: annual ? "annual" : "monthly",
+      });
+      window.location.href = url;
+    } catch (err) {
+      setLoadingKey(null);
+      const status = err?.response?.status;
+      const data = err?.response?.data;
+      if (status === 401) {
+        navigate("/sign-up");
+        return;
+      }
+      setError(
+        data?.error ||
+          err?.message ||
+          "Couldn't start checkout. Try again in a moment."
+      );
+    }
+  };
+
   return (
-    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-px bg-foreground/10 border border-foreground/10 rounded-xl overflow-hidden">
+    <>
+      {error && (
+        <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-900">
+          {error}
+        </div>
+      )}
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-px bg-foreground/10 border border-foreground/10 rounded-xl overflow-hidden">
       {plans.map((p, idx) => (
         <div
           key={p.name}
@@ -176,21 +233,33 @@ function Plans({ annual }) {
             ))}
           </ul>
 
-          <Link
-            to={p.href}
+          <button
+            type="button"
+            onClick={() => handleCta(p)}
+            disabled={loadingKey === p.key}
             className={cn(
-              "w-full py-3.5 inline-flex items-center justify-center gap-2 text-sm font-medium transition-all group rounded-md",
+              "w-full py-3.5 inline-flex items-center justify-center gap-2 text-sm font-medium transition-all group rounded-md disabled:opacity-60 disabled:cursor-wait",
               p.popular
                 ? "bg-foreground text-background hover:bg-foreground/90"
                 : "border border-foreground/20 hover:border-foreground hover:bg-foreground/5"
             )}
           >
-            {p.cta}
-            <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-          </Link>
+            {loadingKey === p.key ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Redirecting…
+              </>
+            ) : (
+              <>
+                {p.cta}
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+              </>
+            )}
+          </button>
         </div>
       ))}
-    </div>
+      </div>
+    </>
   );
 }
 
