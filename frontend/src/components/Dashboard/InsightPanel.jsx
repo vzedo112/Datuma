@@ -51,7 +51,7 @@ export default function InsightPanel({ insights }) {
                 <Icon className="w-4 h-4" strokeWidth={1.7} />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
                   <h3 className="font-medium">{ins.title}</h3>
                   <span
                     className={cn(
@@ -61,6 +61,11 @@ export default function InsightPanel({ insights }) {
                   >
                     {cfg.label}
                   </span>
+                  {ins.datasetTag && (
+                    <span className="text-[10px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded bg-accent text-muted-foreground">
+                      {ins.datasetTag}
+                    </span>
+                  )}
                 </div>
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   {ins.description}

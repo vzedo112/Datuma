@@ -150,7 +150,7 @@ function renderChart(chart) {
   return <Empty />;
 }
 
-export default function ChartPanel({ chart, primary = false }) {
+export default function ChartPanel({ chart, primary = false, datasetTag = null }) {
   const data = chart.data ?? [];
 
   return (
@@ -169,11 +169,18 @@ export default function ChartPanel({ chart, primary = false }) {
             {chart.title}
           </h3>
         </div>
-        {primary && (
-          <span className="shrink-0 text-[10px] font-mono uppercase tracking-widest px-2 py-1 bg-brand text-brand-foreground rounded-md">
-            Primary
-          </span>
-        )}
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
+          {primary && (
+            <span className="text-[10px] font-mono uppercase tracking-widest px-2 py-1 bg-brand text-brand-foreground rounded-md">
+              Primary
+            </span>
+          )}
+          {datasetTag && (
+            <span className="text-[10px] font-mono uppercase tracking-widest px-2 py-1 bg-accent rounded-md max-w-[160px] truncate">
+              {datasetTag}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className={`w-full ${primary ? "h-80 lg:h-96" : "h-64"}`}>
