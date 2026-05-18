@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
-  Download,
   RefreshCw,
   ArrowLeft,
   Loader2,
@@ -9,6 +8,7 @@ import {
 } from "lucide-react";
 import DashboardView from "../components/Dashboard/DashboardView";
 import ShareMenu from "../components/Dashboard/ShareMenu";
+import ExportMenu from "../components/Dashboard/ExportMenu";
 import { useDashboard } from "../context/DashboardContext";
 import { getDashboardById, listDashboards } from "../services/api";
 
@@ -26,6 +26,7 @@ export default function Dashboard() {
   const { id } = useParams();
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState(null);
+  const viewRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -79,7 +80,7 @@ export default function Dashboard() {
         cancelled = true;
       };
     }
-  }, [id, dashboard, setResult]);
+  }, [id, dashboard, dashboardId, setResult]);
 
   if (fetching) {
     return (
@@ -162,10 +163,10 @@ export default function Dashboard() {
         shareToken={shareToken}
         onTokenChange={setShareToken}
       />
-      <button className="inline-flex items-center gap-1.5 h-10 px-4 rounded-md bg-foreground text-background text-sm hover:bg-foreground/90 transition-colors">
-        <Download className="w-3.5 h-3.5" />
-        Export PDF
-      </button>
+      <ExportMenu
+        getNode={() => viewRef.current}
+        filename={dashboard?.title || filename || "datuma-dashboard"}
+      />
     </>
   );
 
@@ -176,6 +177,7 @@ export default function Dashboard() {
       rowCount={rowCount}
       header={header}
       actions={actions}
+      viewRef={viewRef}
     />
   );
 }
