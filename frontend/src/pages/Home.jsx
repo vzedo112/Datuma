@@ -9,6 +9,7 @@ import {
   Gauge,
   Eye,
   LineChart,
+  Layers,
 } from "lucide-react";
 import MarketingNav from "../components/Layout/MarketingNav";
 import MarketingFooter from "../components/Layout/MarketingFooter";
@@ -384,6 +385,20 @@ const features = [
       "No jargon, no axes left unlabelled. Every chart explains itself. Forward it to a CFO without rewriting anything.",
     icon: Eye,
   },
+  {
+    number: "05",
+    title: "Combine spreadsheets in one brief",
+    description:
+      "Upload multiple files into a single dashboard. Datuma names them, treats each as a tab, and writes insights that compare across them when it matters.",
+    icon: Layers,
+  },
+  {
+    number: "06",
+    title: "We catch the inconsistencies first",
+    description:
+      "Before any AI runs, Datuma flags blanks, duplicate rows, mixed-type columns, inconsistent date formats, and outliers — read-only, so your file stays untouched.",
+    icon: ShieldCheck,
+  },
 ];
 
 function Features() {
@@ -439,9 +454,10 @@ function Features() {
 
 function HowItWorks() {
   const steps = [
-    { n: "Step 01", title: "Upload your file", body: "Drag a CSV or Excel sheet into the workspace. Up to 1.2M rows. No mapping, no setup." },
-    { n: "Step 02", title: "Datuma reads it", body: "We profile the columns, compute medians/distributions, sample rows, and brief our analyst model with everything it needs." },
-    { n: "Step 03", title: "You get a dashboard", body: "Headline metrics, charts that answer the right question, and written insights you can forward." },
+    { n: "Step 01", title: "Upload your files", body: "Drag one or more CSV or Excel sheets into the workspace. Up to 1.2M rows per file. No mapping, no setup." },
+    { n: "Step 02", title: "Datuma reads them", body: "We profile the columns, compute medians/distributions, sample rows, and brief our analyst model with everything it needs." },
+    { n: "Step 03", title: "Data quality check", body: "Read-only pre-flight: blanks, duplicates, inconsistent date formats, mixed-type columns, outliers. You decide whether to proceed." },
+    { n: "Step 04", title: "You get a dashboard", body: "Headline metrics, charts that answer the right question, and written insights you can forward — including cross-file comparisons when you upload more than one sheet." },
   ];
 
   return (
@@ -459,14 +475,14 @@ function HowItWorks() {
           </h2>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-px bg-foreground/10 border border-foreground/10 rounded-xl overflow-hidden">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-px bg-foreground/10 border border-foreground/10 rounded-xl overflow-hidden">
           {steps.map((s) => (
-            <div key={s.n} className="bg-background p-8 lg:p-10">
+            <div key={s.n} className="bg-background p-6 lg:p-8">
               <span className="font-mono text-[10px] tracking-widest uppercase text-muted-foreground">
                 {s.n}
               </span>
-              <h3 className="font-display text-2xl lg:text-3xl mt-3 mb-4">{s.title}</h3>
-              <p className="text-muted-foreground leading-relaxed">{s.body}</p>
+              <h3 className="font-display text-2xl lg:text-[1.75rem] mt-3 mb-4 leading-tight">{s.title}</h3>
+              <p className="text-muted-foreground leading-relaxed text-[15px]">{s.body}</p>
             </div>
           ))}
         </div>

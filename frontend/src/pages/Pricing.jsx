@@ -19,7 +19,9 @@ const plans = [
     features: [
       "3 dashboards per month",
       "Up to 50,000 rows per upload",
-      "Multiple datasets per dashboard (up to 2)",
+      "Up to 2 datasets per dashboard",
+      "Data quality report on every upload",
+      "Saved history & re-runs",
       "CSV + Excel uploads",
       "PDF + PNG export",
     ],
@@ -35,13 +37,12 @@ const plans = [
     href: "/app",
     popular: true,
     features: [
-      "1 seat",
+      "Everything in Starter",
       "20 dashboards included each month",
       "€1.50 per additional dashboard",
       "Set a hard monthly spend cap",
       "Up to 1.2M rows per upload",
-      "Multiple datasets per dashboard (up to 5)",
-      "Saved history & re-runs",
+      "Up to 5 datasets per dashboard",
       "Email support, 1 business day",
     ],
   },
@@ -55,13 +56,13 @@ const plans = [
     cta: "Get started",
     href: "/app",
     features: [
+      "Everything in Pro",
       "Up to 5 seats",
       "100 dashboards included each month",
       "€1.00 per additional dashboard",
+      "Up to 10 datasets per dashboard",
       "Shared workspace + role permissions",
       "Custom branding on exports",
-      "Up to 1.2M rows per upload",
-      "Multiple datasets per dashboard (unlimited)",
       "Priority email support",
     ],
   },
@@ -75,8 +76,7 @@ const plans = [
     href: "mailto:hello@datuma.app",
     features: [
       "Everything in Team",
-      "Unlimited seats + dashboards",
-      "Multiple datasets per dashboard (unlimited)",
+      "Unlimited seats, dashboards, and datasets",
       "EU/US data residency",
       "SSO + SCIM provisioning",
       "Audit logs · DPA · SOC 2",
@@ -291,6 +291,14 @@ const faqs = [
   {
     q: "Can I cancel anytime?",
     a: "Yes. Cancel from the dashboard in two clicks. Your account drops back to Starter at the end of the billing period.",
+  },
+  {
+    q: "Can I combine multiple spreadsheets in one dashboard?",
+    a: "Yes. Drop several files into the same upload and Datuma treats each as a named dataset. Claude sees all schemas, sample rows, and stats together — so insights can compare across files when that's what matters. File caps by plan: Starter 2, Pro 5, Team 10, Enterprise 20.",
+  },
+  {
+    q: "What does the data quality check do?",
+    a: "Before Claude sees your data, Datuma runs a read-only pre-flight: missing values per column, duplicate rows, inconsistent date formats, columns with mixed data types, and outliers more than 3 standard deviations from the mean. You see a report, then decide whether to proceed or go fix your file. We never modify your data.",
   },
 ];
 

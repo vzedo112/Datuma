@@ -16,18 +16,12 @@ const upload = multer({ storage: multer.memoryStorage() });
 const HARD_FILE_CEILING = 20;
 
 function dedupeDatasetNames(datasets) {
-  const seen = new Map();
+  const counts = new Map();
   return datasets.map((ds) => {
     const base = (ds.name || '').toString().trim() || ds.filename.replace(/\.[^.]+$/, '');
-    let n = seen.get(base) || 0;
-    let candidate = base;
-    while (seen.has(candidate) && seen.get(candidate) > 0) {
-      n++;
-      candidate = `${base} (${n + 1})`;
-    }
-    seen.set(base, (seen.get(base) || 0) + 1);
-    if (candidate !== base) seen.set(candidate, 1);
-    return { ...ds, name: candidate };
+    const seen = counts.get(base) || 0;
+    counts.set(base, seen + 1);
+    return { ...ds, name: seen === 0 ? base : `${base} (${seen + 1})` };
   });
 }
 
