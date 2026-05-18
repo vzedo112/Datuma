@@ -18,3 +18,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS dashboards_share_token_idx
   ON dashboards (share_token) WHERE share_token IS NOT NULL;
 
 ALTER TABLE dashboards ADD COLUMN IF NOT EXISTS name TEXT;
+
+ALTER TABLE dashboards
+  ADD COLUMN IF NOT EXISTS parent_id INTEGER
+  REFERENCES dashboards(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS dashboards_parent_id_idx ON dashboards (parent_id);
