@@ -5,6 +5,8 @@ import {
   ArrowLeft,
   Loader2,
   AlertCircle,
+  AlertTriangle,
+  X,
 } from "lucide-react";
 import DashboardView from "../components/Dashboard/DashboardView";
 import ShareMenu from "../components/Dashboard/ShareMenu";
@@ -20,6 +22,8 @@ export default function Dashboard() {
     setShareToken,
     filename,
     rowCount,
+    persistenceWarning,
+    setPersistenceWarning,
     setResult,
   } = useDashboard();
   const navigate = useNavigate();
@@ -171,13 +175,34 @@ export default function Dashboard() {
   );
 
   return (
-    <DashboardView
-      dashboard={dashboard}
-      filename={filename}
-      rowCount={rowCount}
-      header={header}
-      actions={actions}
-      viewRef={viewRef}
-    />
+    <>
+      {persistenceWarning && (
+        <div
+          data-export-hide="true"
+          className="max-w-[1400px] mx-auto mb-4 rounded-xl border border-amber-200 bg-amber-50/70 p-4 flex items-start gap-3"
+        >
+          <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+          <p className="text-sm text-amber-900 leading-relaxed flex-1">
+            {persistenceWarning}
+          </p>
+          <button
+            type="button"
+            onClick={() => setPersistenceWarning(null)}
+            className="p-1 -m-1 text-amber-700 hover:text-amber-900"
+            aria-label="Dismiss"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+      <DashboardView
+        dashboard={dashboard}
+        filename={filename}
+        rowCount={rowCount}
+        header={header}
+        actions={actions}
+        viewRef={viewRef}
+      />
+    </>
   );
 }

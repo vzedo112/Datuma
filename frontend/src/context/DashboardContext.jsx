@@ -9,6 +9,7 @@ export function DashboardProvider({ children }) {
   const [datasets, setDatasets] = useState(null);
   const [filename, setFilename] = useState(null);
   const [rowCount, setRowCount] = useState(null);
+  const [persistenceWarning, setPersistenceWarning] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -19,6 +20,7 @@ export function DashboardProvider({ children }) {
     setDatasets(result?.datasets ?? result?.dashboard?.datasets ?? null);
     setFilename(result?.filename ?? null);
     setRowCount(result?.rowCount ?? null);
+    setPersistenceWarning(result?.persistenceWarning ?? null);
     setError(null);
   }, []);
 
@@ -29,6 +31,7 @@ export function DashboardProvider({ children }) {
     setDatasets(null);
     setFilename(null);
     setRowCount(null);
+    setPersistenceWarning(null);
     setLoading(false);
     setError(null);
   }, []);
@@ -43,6 +46,8 @@ export function DashboardProvider({ children }) {
         datasets,
         filename,
         rowCount,
+        persistenceWarning,
+        setPersistenceWarning,
         loading,
         error,
         setLoading,

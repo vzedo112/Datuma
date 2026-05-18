@@ -15,6 +15,7 @@ const {
 } = require('../services/dashboardStore');
 const { getPlan } = require('../services/plans');
 const uploadSession = require('../services/uploadSession');
+const db = require('../db');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -248,6 +249,7 @@ router.post('/generate', requireUser(), express.json(), async (req, res) => {
 
     let savedId = null;
     let shareToken = null;
+    let saveError = null;
     try {
       const saved = await saveDashboard({
         userId,
@@ -259,7 +261,10 @@ router.post('/generate', requireUser(), express.json(), async (req, res) => {
       savedId = saved?.id ?? null;
     } catch (err) {
       console.warn('Failed to persist dashboard:', err.message);
+      saveError = err.message;
     }
+    const persistenceUnavailable =
+      savedId === null && (saveError !== null || !db.isReady());
 
     uploadSession.evict(uploadId);
 
@@ -277,6 +282,9 @@ router.post('/generate', requireUser(), express.json(), async (req, res) => {
       shareToken,
       userId,
       overage,
+      persistenceWarning: persistenceUnavailable
+        ? "Your dashboard was generated but couldn't be saved — the database is unreachable right now. It won't appear in History if you reload."
+        : null,
     });
   } catch (err) {
     console.error('Generate dashboard error:', err);
@@ -341,6 +349,7 @@ router.post('/', requireUser(), upload.single('file'), async (req, res) => {
     }];
 
     let savedId = null;
+    let saveError = null;
     try {
       const saved = await saveDashboard({
         userId,
@@ -351,7 +360,10 @@ router.post('/', requireUser(), upload.single('file'), async (req, res) => {
       savedId = saved?.id ?? null;
     } catch (err) {
       console.warn('Failed to persist dashboard:', err.message);
+      saveError = err.message;
     }
+    const persistenceUnavailable =
+      savedId === null && (saveError !== null || !db.isReady());
 
     res.json({
       id: savedId,
@@ -359,6 +371,9 @@ router.post('/', requireUser(), upload.single('file'), async (req, res) => {
       rowCount: rows.length,
       dashboard: dashboardWithData,
       userId,
+      persistenceWarning: persistenceUnavailable
+        ? "Your dashboard was generated but couldn't be saved — the database is unreachable right now. It won't appear in History if you reload."
+        : null,
     });
   } catch (err) {
     console.error('Upload error:', err);
