@@ -10,6 +10,7 @@ import {
   MoreHorizontal,
   Pencil,
   Trash2,
+  RefreshCw,
 } from "lucide-react";
 import {
   listDashboards,
@@ -35,7 +36,7 @@ function displayName(item) {
   return item.name || item.title || item.filename;
 }
 
-function RowMenu({ onRename, onDelete }) {
+function RowMenu({ onRename, onUpdate, onDelete }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -62,7 +63,19 @@ function RowMenu({ onRename, onDelete }) {
         <MoreHorizontal className="w-4 h-4" />
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 z-20 w-40 rounded-lg border border-border bg-background shadow-md py-1">
+        <div className="absolute right-0 top-full mt-1 z-20 w-52 rounded-lg border border-border bg-background shadow-md py-1">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              setOpen(false);
+              onUpdate();
+            }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-accent"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Update with new data
+          </button>
           <button
             type="button"
             onClick={(e) => {
@@ -93,7 +106,7 @@ function RowMenu({ onRename, onDelete }) {
   );
 }
 
-function HistoryRow({ item, onOpen, onRenamed, onDeleted, onError }) {
+function HistoryRow({ item, revisionLabel, onOpen, onUpdate, onRenamed, onDeleted, onError }) {
   const [renaming, setRenaming] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -175,7 +188,14 @@ function HistoryRow({ item, onOpen, onRenamed, onDeleted, onError }) {
               onClick={() => onOpen(item.id)}
               className="text-left w-full min-w-0"
             >
-              <p className="font-medium truncate">{displayName(item)}</p>
+              <div className="flex items-center gap-2 min-w-0">
+                <p className="font-medium truncate">{displayName(item)}</p>
+                {revisionLabel && (
+                  <span className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 text-[10px] font-mono uppercase tracking-widest">
+                    {revisionLabel}
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground truncate mt-0.5">
                 {item.filename} · {Number(item.row_count).toLocaleString()} rows
                 {item.domain ? ` · ${item.domain}` : ""}
@@ -192,6 +212,7 @@ function HistoryRow({ item, onOpen, onRenamed, onDeleted, onError }) {
           <>
             <RowMenu
               onRename={() => setRenaming(true)}
+              onUpdate={() => onUpdate(item.id)}
               onDelete={() => setConfirmingDelete(true)}
             />
             <button
@@ -277,6 +298,10 @@ export default function History() {
     }
   };
 
+  const updateDashboard = (id) => {
+    navigate(`/app?parent=${id}`);
+  };
+
   const handleRenamed = (id, name) => {
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, name } : it)));
   };
@@ -284,6 +309,24 @@ export default function History() {
   const handleDeleted = (id) => {
     setItems((prev) => prev.filter((it) => it.id !== id));
   };
+
+  // Compute per-row revision labels. For each row that has a parent, walk the
+  // chain via parent_id to determine its version number within its family.
+  const revisionLabels = (() => {
+    const byId = new Map(items.map((it) => [it.id, it]));
+    const labels = new Map();
+    for (const it of items) {
+      if (!it.parent_id) continue;
+      let depth = 1;
+      let cursor = byId.get(it.parent_id);
+      while (cursor && cursor.parent_id && depth < 10) {
+        depth++;
+        cursor = byId.get(cursor.parent_id);
+      }
+      labels.set(it.id, `v${depth + 1}`);
+    }
+    return labels;
+  })();
 
   return (
     <div className="max-w-4xl mx-auto pb-16">
@@ -356,7 +399,9 @@ export default function History() {
             <HistoryRow
               key={item.id}
               item={item}
+              revisionLabel={revisionLabels.get(item.id)}
               onOpen={openDashboard}
+              onUpdate={updateDashboard}
               onRenamed={handleRenamed}
               onDeleted={handleDeleted}
               onError={setError}

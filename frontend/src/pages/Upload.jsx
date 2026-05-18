@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowRight,
   Sparkles,
@@ -10,6 +10,7 @@ import {
   AlertCircle,
   X,
   ShieldCheck,
+  RefreshCw,
 } from "lucide-react";
 import UploadDropzone from "../components/Upload/UploadDropzone";
 import DataQualityReport from "../components/Upload/DataQualityReport";
@@ -18,6 +19,7 @@ import {
   analyzeUpload,
   generateDashboardFromUpload,
   getUsage,
+  getDashboardById,
 } from "../services/api";
 
 const ANALYZE_STAGES = [
@@ -41,9 +43,16 @@ export default function Upload() {
   const [stageBank, setStageBank] = useState(ANALYZE_STAGES);
   const [uploadResult, setUploadResult] = useState(null); // { uploadId, datasets: [...] }
   const [planFileLimit, setPlanFileLimit] = useState(5);
+  const [parent, setParent] = useState(null); // { id, name } when updating an existing dashboard
 
   const { loading, error, setLoading, setError, setResult } = useDashboard();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const parentId = useMemo(() => {
+    const raw = searchParams.get("parent");
+    const n = raw ? Number(raw) : null;
+    return Number.isInteger(n) ? n : null;
+  }, [searchParams]);
 
   useEffect(() => {
     let cancelled = false;
@@ -63,6 +72,38 @@ export default function Upload() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!parentId) {
+      setParent(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await getDashboardById(parentId);
+        if (cancelled) return;
+        setParent({
+          id: data.id,
+          name: data.name || data.dashboard?.title || data.filename,
+        });
+      } catch {
+        if (!cancelled) {
+          // Parent fetch failed — drop the param silently and act like a fresh upload.
+          setParent(null);
+          setSearchParams({}, { replace: true });
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [parentId, setSearchParams]);
+
+  const clearParent = () => {
+    setParent(null);
+    setSearchParams({}, { replace: true });
+  };
 
   const handleNameChange = (filename, name) => {
     setDatasetNames((prev) => ({ ...prev, [filename]: name }));
@@ -95,7 +136,7 @@ export default function Upload() {
     }));
 
     try {
-      const result = await analyzeUpload(files, names);
+      const result = await analyzeUpload(files, names, parentId);
       clearInterval(interval);
       setUploadResult(result);
       setLoading(false);
@@ -190,16 +231,46 @@ export default function Upload() {
 
   return (
     <div className="max-w-4xl mx-auto pt-4 pb-16">
+      {parent && (
+        <div className="mb-6 rounded-xl border border-sky-200 bg-sky-50/60 px-4 py-3 flex items-center gap-3">
+          <RefreshCw className="w-4 h-4 text-sky-700 shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-mono uppercase tracking-widest text-sky-700">
+              Updating dashboard
+            </p>
+            <p className="text-sm font-medium text-sky-900 truncate">
+              {parent.name}
+            </p>
+          </div>
+          <Link
+            to={`/app/dashboard/${parent.id}`}
+            className="text-xs text-sky-800 hover:text-sky-900 underline underline-offset-4 hidden sm:inline"
+          >
+            View original
+          </Link>
+          <button
+            type="button"
+            onClick={clearParent}
+            className="p-1.5 rounded-md text-sky-700 hover:bg-sky-100"
+            aria-label="Cancel update — switch back to a fresh upload"
+            title="Switch back to a fresh upload"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       <div className="mb-10">
         <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground block mb-3">
-          New upload
+          {parent ? "Update with new data" : "New upload"}
         </span>
         <h1 className="font-display text-4xl lg:text-5xl tracking-tight mb-3">
-          Drop one or more spreadsheets.
+          {parent ? "Drop the latest export." : "Drop one or more spreadsheets."}
         </h1>
         <p className="text-muted-foreground max-w-xl">
-          Datuma reads your files, runs a quality pre-flight, then hands you a one-page
-          dashboard that ties them together.
+          {parent
+            ? `Datuma will run the same pre-flight checks and create a new revision of "${parent.name}". The original stays in your history.`
+            : "Datuma reads your files, runs a quality pre-flight, then hands you a one-page dashboard that ties them together."}
         </p>
       </div>
 
