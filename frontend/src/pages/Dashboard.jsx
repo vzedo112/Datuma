@@ -32,6 +32,7 @@ export default function Dashboard() {
 
     // Case 1: explicit /app/dashboard/:id — fetch that exact dashboard.
     if (id) {
+      if (String(dashboardId) === String(id)) return;
       (async () => {
         try {
           setFetching(true);
