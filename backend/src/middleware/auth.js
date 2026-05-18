@@ -1,4 +1,4 @@
-const { clerkMiddleware, requireAuth, getAuth } = require('@clerk/express');
+const { clerkMiddleware, getAuth, clerkClient } = require('@clerk/express');
 
 const publishableKey =
   process.env.CLERK_PUBLISHABLE_KEY ||
@@ -34,7 +34,14 @@ function requireUser() {
       next();
     };
   }
-  return requireAuth();
+  return (req, res, next) => {
+    const auth = getAuth(req);
+    if (!auth || !auth.userId) {
+      return res.status(401).json({ error: 'Unauthorized: Missing or invalid Clerk token' });
+    }
+    req.auth = auth;
+    next();
+  };
 }
 
 function getUserId(req) {
