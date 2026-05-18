@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   FileSpreadsheet,
@@ -7,8 +7,16 @@ import {
   Loader2,
   AlertCircle,
   History as HistoryIcon,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
 } from "lucide-react";
-import { listDashboards, getDashboardById } from "../services/api";
+import {
+  listDashboards,
+  getDashboardById,
+  renameDashboard,
+  deleteDashboard,
+} from "../services/api";
 import { useDashboard } from "../context/DashboardContext";
 
 function formatDate(iso) {
@@ -21,6 +29,209 @@ function formatDate(iso) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function displayName(item) {
+  return item.name || item.title || item.filename;
+}
+
+function RowMenu({ onRename, onDelete }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref} onClick={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          setOpen((v) => !v);
+        }}
+        className="p-2 rounded-md hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors"
+        aria-label="Row actions"
+      >
+        <MoreHorizontal className="w-4 h-4" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-20 w-40 rounded-lg border border-border bg-background shadow-md py-1">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              setOpen(false);
+              onRename();
+            }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-accent"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+            Rename
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              setOpen(false);
+              onDelete();
+            }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-rose-50 text-rose-700"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function HistoryRow({ item, onOpen, onRenamed, onDeleted, onError }) {
+  const [renaming, setRenaming] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [draft, setDraft] = useState(displayName(item));
+
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (renaming && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [renaming]);
+
+  const saveRename = async () => {
+    const trimmed = draft.trim().slice(0, 120);
+    if (trimmed === displayName(item)) {
+      setRenaming(false);
+      return;
+    }
+    setBusy(true);
+    try {
+      await renameDashboard(item.id, trimmed);
+      onRenamed(item.id, trimmed);
+      setRenaming(false);
+    } catch (err) {
+      onError(err?.response?.data?.error || err?.message || "Couldn't rename.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const cancelRename = () => {
+    setDraft(displayName(item));
+    setRenaming(false);
+  };
+
+  const confirmDelete = async () => {
+    setBusy(true);
+    try {
+      await deleteDashboard(item.id);
+      onDeleted(item.id);
+    } catch (err) {
+      onError(err?.response?.data?.error || err?.message || "Couldn't delete.");
+      setBusy(false);
+      setConfirmingDelete(false);
+    }
+  };
+
+  return (
+    <li>
+      <div
+        className={`group w-full text-left px-5 py-4 flex items-center gap-4 transition-colors ${
+          confirmingDelete ? "bg-rose-50/50" : "hover:bg-accent/50"
+        }`}
+      >
+        <div className="p-2 rounded-md bg-accent shrink-0">
+          <FileSpreadsheet className="w-4 h-4" strokeWidth={1.7} />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          {renaming ? (
+            <input
+              ref={inputRef}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") saveRename();
+                if (e.key === "Escape") cancelRename();
+              }}
+              onBlur={saveRename}
+              disabled={busy}
+              maxLength={120}
+              className="w-full bg-background border border-border rounded px-2 py-1 text-sm font-medium focus:outline-none focus:border-foreground"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => onOpen(item.id)}
+              className="text-left w-full min-w-0"
+            >
+              <p className="font-medium truncate">{displayName(item)}</p>
+              <p className="text-xs text-muted-foreground truncate mt-0.5">
+                {item.filename} · {Number(item.row_count).toLocaleString()} rows
+                {item.domain ? ` · ${item.domain}` : ""}
+              </p>
+            </button>
+          )}
+        </div>
+
+        <span className="font-mono text-[11px] text-muted-foreground hidden sm:block shrink-0">
+          {formatDate(item.created_at)}
+        </span>
+
+        {!renaming && !confirmingDelete && (
+          <>
+            <RowMenu
+              onRename={() => setRenaming(true)}
+              onDelete={() => setConfirmingDelete(true)}
+            />
+            <button
+              type="button"
+              onClick={() => onOpen(item.id)}
+              className="p-1 text-muted-foreground hover:text-foreground"
+              aria-label="Open dashboard"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </>
+        )}
+      </div>
+
+      {confirmingDelete && (
+        <div className="px-5 pb-4 -mt-1 flex items-center justify-end gap-3 bg-rose-50/50">
+          <span className="mr-auto text-sm text-rose-900">
+            Delete this dashboard? This can't be undone.
+          </span>
+          <button
+            type="button"
+            onClick={() => setConfirmingDelete(false)}
+            disabled={busy}
+            className="px-3 h-8 rounded-md text-sm text-muted-foreground hover:text-foreground"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={confirmDelete}
+            disabled={busy}
+            className="px-3 h-8 rounded-md text-sm bg-rose-700 text-background hover:bg-rose-800 disabled:opacity-60 inline-flex items-center gap-1.5"
+          >
+            {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            Delete
+          </button>
+        </div>
+      )}
+    </li>
+  );
 }
 
 export default function History() {
@@ -66,6 +277,14 @@ export default function History() {
     }
   };
 
+  const handleRenamed = (id, name) => {
+    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, name } : it)));
+  };
+
+  const handleDeleted = (id) => {
+    setItems((prev) => prev.filter((it) => it.id !== id));
+  };
+
   return (
     <div className="max-w-4xl mx-auto pb-16">
       <div className="mb-10 flex items-start justify-between gap-4">
@@ -78,7 +297,7 @@ export default function History() {
           </h1>
           <p className="text-muted-foreground max-w-xl">
             Every spreadsheet you've turned into a brief — newest first. Click any row to
-            re-open it.
+            re-open it, or use the menu to rename or delete.
           </p>
         </div>
         <Link
@@ -93,10 +312,16 @@ export default function History() {
       {error && (
         <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 p-5 flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-rose-700 shrink-0 mt-0.5" />
-          <div>
-            <p className="font-medium text-rose-900">Couldn't load history</p>
-            <p className="text-sm text-rose-800 mt-1">{error}</p>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-rose-900">{error}</p>
           </div>
+          <button
+            type="button"
+            onClick={() => setError(null)}
+            className="text-rose-700 hover:text-rose-900 text-xs uppercase font-mono tracking-widest"
+          >
+            Dismiss
+          </button>
         </div>
       )}
 
@@ -128,30 +353,14 @@ export default function History() {
       ) : (
         <ul className="rounded-xl border border-border bg-card overflow-hidden divide-y divide-border">
           {items.map((item) => (
-            <li key={item.id}>
-              <button
-                type="button"
-                onClick={() => openDashboard(item.id)}
-                className="w-full text-left px-5 py-4 flex items-center gap-4 hover:bg-accent/50 transition-colors group"
-              >
-                <div className="p-2 rounded-md bg-accent shrink-0">
-                  <FileSpreadsheet className="w-4 h-4" strokeWidth={1.7} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium truncate">
-                    {item.title || item.filename}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate mt-0.5">
-                    {item.filename} · {Number(item.row_count).toLocaleString()} rows
-                    {item.domain ? ` · ${item.domain}` : ""}
-                  </p>
-                </div>
-                <span className="font-mono text-[11px] text-muted-foreground hidden sm:block">
-                  {formatDate(item.created_at)}
-                </span>
-                <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-              </button>
-            </li>
+            <HistoryRow
+              key={item.id}
+              item={item}
+              onOpen={openDashboard}
+              onRenamed={handleRenamed}
+              onDeleted={handleDeleted}
+              onError={setError}
+            />
           ))}
         </ul>
       )}

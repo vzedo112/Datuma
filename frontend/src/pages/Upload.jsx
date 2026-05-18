@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowRight,
@@ -9,54 +9,99 @@ import {
   Wand2,
   AlertCircle,
   X,
+  ShieldCheck,
 } from "lucide-react";
 import UploadDropzone from "../components/Upload/UploadDropzone";
+import DataQualityReport from "../components/Upload/DataQualityReport";
 import { useDashboard } from "../context/DashboardContext";
-import { uploadFile } from "../services/api";
+import {
+  analyzeUpload,
+  generateDashboardFromUpload,
+  getUsage,
+} from "../services/api";
 
-const STAGES = [
+const ANALYZE_STAGES = [
   { label: "Parsing rows", icon: Database },
   { label: "Profiling columns", icon: Zap },
+  { label: "Running quality checks", icon: ShieldCheck },
+];
+
+const GENERATE_STAGES = [
   { label: "Briefing the analyst", icon: Wand2 },
+  { label: "Building your dashboard", icon: Sparkles },
 ];
 
 const MAX_SIZE_BYTES = 60 * 1024 * 1024;
 
 export default function Upload() {
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
+  const [datasetNames, setDatasetNames] = useState({});
+  const [step, setStep] = useState("pick"); // "pick" | "report" | "generating"
   const [stage, setStage] = useState(0);
+  const [stageBank, setStageBank] = useState(ANALYZE_STAGES);
+  const [uploadResult, setUploadResult] = useState(null); // { uploadId, datasets: [...] }
+  const [planFileLimit, setPlanFileLimit] = useState(5);
+
   const { loading, error, setLoading, setError, setResult } = useDashboard();
   const navigate = useNavigate();
 
-  const start = async () => {
-    if (!file) return;
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const usage = await getUsage();
+        if (cancelled) return;
+        const fileLimit = usage?.plan?.fileLimit;
+        if (typeof fileLimit === "number" && fileLimit > 0) {
+          setPlanFileLimit(fileLimit);
+        }
+      } catch {
+        // Plan info unavailable — fall back to default cap.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-    if (file.size > MAX_SIZE_BYTES) {
+  const handleNameChange = (filename, name) => {
+    setDatasetNames((prev) => ({ ...prev, [filename]: name }));
+  };
+
+  const oversize = files.find((f) => f.size > MAX_SIZE_BYTES);
+
+  const startAnalyze = async () => {
+    if (files.length === 0) return;
+    if (oversize) {
       setError(
-        `File is ${(file.size / 1024 / 1024).toFixed(1)} MB. Max upload size is 60 MB.`
+        `${oversize.name} is ${(oversize.size / 1024 / 1024).toFixed(1)} MB. Max per file is 60 MB.`
       );
       return;
     }
 
     setError(null);
     setLoading(true);
+    setStageBank(ANALYZE_STAGES);
     setStage(0);
 
-    // Cycle through stages while waiting for the backend.
-    // Holds on the last stage until the response lands.
-    const stageInterval = setInterval(() => {
-      setStage((s) => Math.min(s + 1, STAGES.length - 1));
-    }, 900);
+    const interval = setInterval(
+      () => setStage((s) => Math.min(s + 1, ANALYZE_STAGES.length - 1)),
+      900
+    );
+
+    const names = files.map((f) => ({
+      filename: f.name,
+      name: datasetNames[f.name] || f.name.replace(/\.[^.]+$/, ""),
+    }));
 
     try {
-      const result = await uploadFile(file);
-      clearInterval(stageInterval);
-      setStage(STAGES.length - 1);
-      setResult(result);
+      const result = await analyzeUpload(files, names);
+      clearInterval(interval);
+      setUploadResult(result);
       setLoading(false);
-      navigate("/app/dashboard");
+      setStep("report");
     } catch (err) {
-      clearInterval(stageInterval);
+      clearInterval(interval);
       setLoading(false);
       setStage(0);
       const data = err?.response?.data;
@@ -64,6 +109,10 @@ export default function Upload() {
       if (data?.code === "QUOTA_EXCEEDED") {
         message = `${data.error} Visit Pricing to upgrade your plan.`;
       } else if (data?.code === "ROW_LIMIT_EXCEEDED") {
+        message = data.error;
+      } else if (data?.code === "FILE_LIMIT_EXCEEDED") {
+        message = data.error;
+      } else if (data?.code === "EMPTY_FILE") {
         message = data.error;
       } else {
         message =
@@ -77,6 +126,66 @@ export default function Upload() {
     }
   };
 
+  const startGenerate = async () => {
+    if (!uploadResult?.uploadId) return;
+    setError(null);
+    setLoading(true);
+    setStep("generating");
+    setStageBank(GENERATE_STAGES);
+    setStage(0);
+
+    const interval = setInterval(
+      () => setStage((s) => Math.min(s + 1, GENERATE_STAGES.length - 1)),
+      4000
+    );
+
+    const names = files.map((f) => ({
+      filename: f.name,
+      name: datasetNames[f.name] || f.name.replace(/\.[^.]+$/, ""),
+    }));
+
+    try {
+      const result = await generateDashboardFromUpload(uploadResult.uploadId, names);
+      clearInterval(interval);
+      setResult(result);
+      setLoading(false);
+      navigate("/app/dashboard");
+    } catch (err) {
+      clearInterval(interval);
+      setLoading(false);
+      setStage(0);
+      setStep("report");
+      const data = err?.response?.data;
+      if (data?.code === "SESSION_EXPIRED") {
+        setError("Your upload expired. Please re-upload your files.");
+        setUploadResult(null);
+        setStep("pick");
+        return;
+      }
+      setError(
+        data?.error ||
+          err?.message ||
+          "Dashboard generation failed. Try again."
+      );
+    }
+  };
+
+  const backToPick = () => {
+    setStep("pick");
+    setUploadResult(null);
+  };
+
+  if (step === "report" && uploadResult) {
+    return (
+      <DataQualityReport
+        datasets={uploadResult.datasets}
+        onBack={backToPick}
+        onProceed={startGenerate}
+        generating={false}
+      />
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto pt-4 pb-16">
       <div className="mb-10">
@@ -84,15 +193,22 @@ export default function Upload() {
           New upload
         </span>
         <h1 className="font-display text-4xl lg:text-5xl tracking-tight mb-3">
-          Drop a file. Get a brief.
+          Drop one or more spreadsheets.
         </h1>
         <p className="text-muted-foreground max-w-xl">
-          Datuma reads your spreadsheet, picks the most important business question,
-          and answers it with a one-page dashboard.
+          Datuma reads your files, runs a quality pre-flight, then hands you a one-page
+          dashboard that ties them together.
         </p>
       </div>
 
-      <UploadDropzone file={file} onFile={setFile} disabled={loading} />
+      <UploadDropzone
+        files={files}
+        datasetNames={datasetNames}
+        onFilesChange={setFiles}
+        onNameChange={handleNameChange}
+        disabled={loading}
+        maxFiles={planFileLimit}
+      />
 
       {error && (
         <div className="mt-6 rounded-xl border border-rose-200 bg-rose-50 p-5 flex items-start gap-3">
@@ -112,15 +228,15 @@ export default function Upload() {
         </div>
       )}
 
-      {file && !loading && (
+      {files.length > 0 && !loading && (
         <div className="mt-6 flex justify-end">
           <button
             type="button"
-            onClick={start}
+            onClick={startAnalyze}
             className="inline-flex items-center gap-2 bg-foreground hover:bg-foreground/90 text-background px-6 h-12 rounded-full text-sm font-medium group"
           >
             <Sparkles className="w-4 h-4" />
-            Generate dashboard
+            Run pre-flight & analyse
             <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
           </button>
         </div>
@@ -131,11 +247,13 @@ export default function Upload() {
           <div className="flex items-center gap-3 mb-6">
             <Loader2 className="w-4 h-4 animate-spin" />
             <p className="text-sm font-mono uppercase tracking-widest text-muted-foreground">
-              Working on {file?.name}
+              {step === "generating"
+                ? "Generating dashboard"
+                : `Profiling ${files.length} file${files.length === 1 ? "" : "s"}`}
             </p>
           </div>
           <ul className="space-y-3">
-            {STAGES.map((s, i) => {
+            {stageBank.map((s, i) => {
               const Icon = s.icon;
               const done = i < stage;
               const current = i === stage;
@@ -143,11 +261,7 @@ export default function Upload() {
                 <li
                   key={s.label}
                   className={`flex items-center gap-3 text-sm transition-colors ${
-                    done
-                      ? "text-foreground"
-                      : current
-                      ? "text-foreground"
-                      : "text-muted-foreground/60"
+                    done || current ? "text-foreground" : "text-muted-foreground/60"
                   }`}
                 >
                   <div
@@ -173,8 +287,9 @@ export default function Upload() {
             })}
           </ul>
           <p className="mt-6 text-xs text-muted-foreground">
-            Larger files take 20–40 seconds while Claude reads your data and writes
-            the brief. Don't close this tab.
+            {step === "generating"
+              ? "Claude is reading your data and writing the brief. Don't close this tab."
+              : "Pre-flight checks run locally on the server — no AI yet."}
           </p>
         </div>
       )}
@@ -182,7 +297,7 @@ export default function Upload() {
       <div className="mt-16 grid sm:grid-cols-3 gap-px bg-foreground/10 border border-foreground/10 rounded-xl overflow-hidden">
         {[
           { label: "Formats", value: "CSV, XLSX, XLS" },
-          { label: "Max rows", value: "1.2M / file" },
+          { label: "Files per dashboard", value: `${planFileLimit}` },
           { label: "Avg time", value: "28 seconds" },
         ].map((s) => (
           <div key={s.label} className="bg-background p-6">

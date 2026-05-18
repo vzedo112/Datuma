@@ -9,6 +9,7 @@ import {
   Gauge,
   Eye,
   LineChart,
+  Layers,
 } from "lucide-react";
 import MarketingNav from "../components/Layout/MarketingNav";
 import MarketingFooter from "../components/Layout/MarketingFooter";
