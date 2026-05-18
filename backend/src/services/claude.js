@@ -107,7 +107,7 @@ function extractJson(text) {
   return fenced ? fenced[1].trim() : trimmed;
 }
 
-async function callClaude(prompt, retryMessage = null) {
+async function callClaude(prompt, retryMessage = null, plan = 'starter') {
   const messages = [{ role: 'user', content: prompt }];
   if (retryMessage) {
     messages.push({ role: 'assistant', content: retryMessage.previousResponse });
@@ -117,8 +117,12 @@ async function callClaude(prompt, retryMessage = null) {
     });
   }
 
+  const modelToUse = (plan === 'pro' || plan === 'team')
+    ? 'claude-opus-4-7'
+    : 'claude-sonnet-4-6';
+
   const response = await client.messages.create({
-    model: 'claude-opus-4-7',
+    model: modelToUse,
     max_tokens: 3000,
     system: SYSTEM_PROMPT,
     messages,
@@ -127,10 +131,10 @@ async function callClaude(prompt, retryMessage = null) {
   return response.content[0].text;
 }
 
-async function generateDashboard(schema, sampleRows, stats, totalRows) {
+async function generateDashboard(schema, sampleRows, stats, totalRows, plan = 'starter') {
   const prompt = buildPrompt(schema, sampleRows, stats, totalRows);
 
-  let rawResponse = await callClaude(prompt);
+  let rawResponse = await callClaude(prompt, null, plan);
   let dashboard;
 
   try {
@@ -146,7 +150,7 @@ async function generateDashboard(schema, sampleRows, stats, totalRows) {
     const retryResponse = await callClaude(prompt, {
       previousResponse: rawResponse,
       errors: validation.errors,
-    });
+    }, plan);
     try {
       dashboard = JSON.parse(extractJson(retryResponse));
     } catch (err) {

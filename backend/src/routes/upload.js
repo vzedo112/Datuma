@@ -58,7 +58,7 @@ router.post('/', requireUser(), upload.single('file'), async (req, res) => {
     const stats = getDatasetStats(rows, schema);
     const sampleRows = getRepresentativeSample(rows, 30);
 
-    const dashboard = await generateDashboard(schema, sampleRows, stats, rows.length);
+    const dashboard = await generateDashboard(schema, sampleRows, stats, rows.length, planKey);
     const dashboardWithData = attachChartData(rows, dashboard, stats);
 
     let savedId = null;
