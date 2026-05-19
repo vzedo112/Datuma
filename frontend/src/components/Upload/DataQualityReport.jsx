@@ -312,41 +312,52 @@ function CrossFileBanner({ findings }) {
   );
 }
 
-function CrossUploadBanner({ findings }) {
+function CrossUploadBanner({ findings, parentDashboardId }) {
   if (!findings || findings.length === 0) return null;
   return (
     <div className="rounded-xl border border-sky-200 bg-sky-50/60 p-5 space-y-3">
       <div className="flex items-center gap-2.5">
         <HistoryIcon className="w-4 h-4 text-sky-700" />
-        <h3 className="font-medium text-sky-900">Looks familiar</h3>
+        <h3 className="font-medium text-sky-900">
+          {parentDashboardId ? "Update preview" : "Looks familiar"}
+        </h3>
         <span className="font-mono text-[10px] uppercase tracking-widest text-sky-700 ml-auto">
           {findings.length} match{findings.length === 1 ? "" : "es"}
         </span>
       </div>
       <p className="text-xs text-sky-900/80 leading-relaxed">
-        This upload overlaps with dashboards you've generated before. Datuma won't merge
-        them automatically — generating now creates a new, independent dashboard.
+        {parentDashboardId
+          ? "Datuma will append your new rows to the targeted dashboard, deduplicating exact matches. Nothing in the original revision will be overwritten."
+          : "This upload overlaps with dashboards you've generated before. Datuma won't merge them automatically — generating now creates a new, independent dashboard."}
       </p>
       <ul className="space-y-2.5">
-        {findings.map((f, i) => (
-          <li key={i} className="text-sm">
-            <div className="flex items-baseline gap-2 flex-wrap">
-              <span className="font-medium text-sky-900 truncate max-w-[260px]">
-                {f.priorDashboardName}
-              </span>
-              <span className="font-mono text-[10px] uppercase tracking-widest text-sky-700">
-                {formatRelative(f.priorCreatedAt)}
-              </span>
-              <span className="ml-auto font-mono text-xs text-sky-900">
-                {f.matchPct}% sample match
-              </span>
-            </div>
-            <p className="text-xs text-sky-900/80 mt-1 leading-relaxed">
-              {f.matched} of {f.sampleSize} sampled rows from "{f.priorDataset}" appear in
-              your "{f.currentDataset}" file.
-            </p>
-          </li>
-        ))}
+        {findings.map((f, i) => {
+          const isTarget = parentDashboardId && f.priorDashboardId === parentDashboardId;
+          return (
+            <li key={i} className="text-sm">
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <span className="font-medium text-sky-900 truncate max-w-[260px]">
+                  {f.priorDashboardName}
+                </span>
+                {isTarget && (
+                  <span className="px-1.5 py-0.5 rounded bg-sky-700 text-white text-[10px] font-mono uppercase tracking-widest">
+                    Updating this
+                  </span>
+                )}
+                <span className="font-mono text-[10px] uppercase tracking-widest text-sky-700">
+                  {formatRelative(f.priorCreatedAt)}
+                </span>
+                <span className="ml-auto font-mono text-xs text-sky-900">
+                  {f.matchPct}% sample match
+                </span>
+              </div>
+              <p className="text-xs text-sky-900/80 mt-1 leading-relaxed">
+                {f.matched} of {f.sampleSize} sampled rows from "{f.priorDataset}" appear in
+                your "{f.currentDataset}" file.
+              </p>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
@@ -356,6 +367,7 @@ export default function DataQualityReport({
   datasets,
   crossFileFindings,
   crossUploadFindings,
+  parentDashboardId,
   onBack,
   onProceed,
   generating,
@@ -380,7 +392,10 @@ export default function DataQualityReport({
 
       {hasOverlap && (
         <div className="space-y-3 mb-6">
-          <CrossUploadBanner findings={crossUploadFindings} />
+          <CrossUploadBanner
+            findings={crossUploadFindings}
+            parentDashboardId={parentDashboardId}
+          />
           <CrossFileBanner findings={crossFileFindings} />
         </div>
       )}

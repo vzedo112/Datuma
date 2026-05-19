@@ -7,6 +7,7 @@ import {
   AlertCircle,
   AlertTriangle,
   X,
+  Layers,
 } from "lucide-react";
 import DashboardView from "../components/Dashboard/DashboardView";
 import ShareMenu from "../components/Dashboard/ShareMenu";
@@ -195,6 +196,7 @@ export default function Dashboard() {
           </button>
         </div>
       )}
+      <AppendSummaryBanner summary={dashboard.appendSummary} />
       <DashboardView
         dashboard={dashboard}
         filename={filename}
@@ -204,5 +206,75 @@ export default function Dashboard() {
         viewRef={viewRef}
       />
     </>
+  );
+}
+
+function AppendSummaryBanner({ summary }) {
+  if (!summary || !Array.isArray(summary.perDataset) || summary.perDataset.length === 0) {
+    return null;
+  }
+
+  const merged = summary.perDataset.filter((d) => d.status === "merged");
+  const carriedOver = summary.perDataset.filter((d) => d.status === "carried-over");
+  const newDatasets = summary.perDataset.filter(
+    (d) => d.status === "new" || d.status === "no-schema-overlap"
+  );
+
+  const totalAdded = merged.reduce((sum, d) => sum + (d.added || 0), 0);
+  const totalDeduped = merged.reduce((sum, d) => sum + (d.deduped || 0), 0);
+  const capApplied = merged.some((d) => d.capApplied);
+
+  if (merged.length === 0 && carriedOver.length === 0) return null;
+
+  return (
+    <div
+      data-export-hide="true"
+      className="max-w-[1400px] mx-auto mb-4 rounded-xl border border-sky-200 bg-sky-50/70 p-4 flex items-start gap-3"
+    >
+      <Layers className="w-4 h-4 text-sky-700 shrink-0 mt-0.5" />
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] font-mono uppercase tracking-widest text-sky-700 mb-1">
+          Update applied
+        </p>
+        <p className="text-sm text-sky-900 leading-relaxed">
+          {merged.length > 0 && (
+            <>
+              Added <strong>{totalAdded.toLocaleString()}</strong> new row
+              {totalAdded === 1 ? "" : "s"}
+              {totalDeduped > 0 && (
+                <>
+                  , skipped <strong>{totalDeduped.toLocaleString()}</strong> exact
+                  duplicate{totalDeduped === 1 ? "" : "s"}
+                </>
+              )}
+              .{" "}
+            </>
+          )}
+          {carriedOver.length > 0 && (
+            <>
+              Kept{" "}
+              <strong>
+                {carriedOver.length} prior dataset{carriedOver.length === 1 ? "" : "s"}
+              </strong>{" "}
+              unchanged.{" "}
+            </>
+          )}
+          {newDatasets.length > 0 && (
+            <>
+              Added{" "}
+              <strong>
+                {newDatasets.length} brand-new dataset{newDatasets.length === 1 ? "" : "s"}
+              </strong>
+              .{" "}
+            </>
+          )}
+        </p>
+        {capApplied && (
+          <p className="text-xs text-sky-800/80 mt-1">
+            Some dataset hit the 25,000-row history cap — oldest rows were dropped.
+          </p>
+        )}
+      </div>
+    </div>
   );
 }

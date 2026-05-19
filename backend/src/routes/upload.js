@@ -4,6 +4,7 @@ const { parseFile, getSchema } = require('../services/parser');
 const { getDatasetStats, getRepresentativeSample } = require('../services/stats');
 const { analyzeQuality } = require('../services/dataQuality');
 const { analyzeCrossFile, analyzeCrossUpload } = require('../services/overlapAnalysis');
+const { appendDataset, ROW_CAP_PER_DATASET } = require('../services/appendEngine');
 const { generateDashboard } = require('../services/claude');
 const { attachChartData } = require('../services/aggregator');
 const {
@@ -248,6 +249,87 @@ router.post('/generate', requireUser(), express.json(), async (req, res) => {
     const planKey = await getUserPlan(req);
     const plan = getPlan(planKey);
 
+    // If updating a parent dashboard, append the parent's stored rows into
+    // each matching new dataset. Pure-Append semantics: never overwrite, never
+    // dedupe by PK — only exact-row dupes are collapsed. Datasets without a
+    // parent match stay as-is; parent datasets with no new file are carried
+    // forward unchanged.
+    let appendSummary = null;
+    if (session.parentDashboardId) {
+      try {
+        const parent = await getDashboard(session.parentDashboardId, userId);
+        const priorDatasets = parent?.dashboard?.analysisContext?.datasets;
+        if (Array.isArray(priorDatasets) && priorDatasets.length > 0) {
+          const priorByName = new Map(priorDatasets.map((p) => [p.name, p]));
+          const perDataset = [];
+
+          datasets = datasets.map((d) => {
+            const prior = priorByName.get(d.name);
+            if (!prior) {
+              perDataset.push({ name: d.name, status: 'new', added: d.rowCount });
+              return d;
+            }
+            const result = appendDataset(prior, d);
+            if (!result) {
+              perDataset.push({
+                name: d.name,
+                status: 'no-schema-overlap',
+                added: d.rowCount,
+              });
+              return d;
+            }
+            const combinedSchema = getSchema(result.rows);
+            const combinedStats = getDatasetStats(result.rows, combinedSchema);
+            const combinedSample = getRepresentativeSample(result.rows, 30);
+            perDataset.push({
+              name: d.name,
+              status: 'merged',
+              priorCount: prior.rowCount,
+              freshCount: d.rowCount,
+              added: result.added,
+              deduped: result.deduped,
+              mergedCount: result.rows.length,
+              schemaDiff: result.schemaDiff,
+              capApplied: result.capApplied,
+            });
+            return {
+              ...d,
+              rows: result.rows,
+              schema: combinedSchema,
+              stats: combinedStats,
+              sample: combinedSample,
+              rowCount: result.rows.length,
+            };
+          });
+
+          // Carry forward any parent datasets the user didn't re-upload.
+          const newNames = new Set(datasets.map((d) => d.name));
+          for (const p of priorDatasets) {
+            if (newNames.has(p.name)) continue;
+            if (!Array.isArray(p.rows) || p.rows.length === 0) continue;
+            datasets.push({
+              name: p.name,
+              filename: p.filename || `${p.name}.csv`,
+              rowCount: p.rowCount,
+              rows: p.rows,
+              schema: p.schema,
+              stats: p.stats,
+              sample: p.sample,
+            });
+            perDataset.push({
+              name: p.name,
+              status: 'carried-over',
+              rowCount: p.rowCount,
+            });
+          }
+
+          appendSummary = { mode: 'append', perDataset };
+        }
+      } catch (err) {
+        console.warn('Append from parent failed:', err.message);
+      }
+    }
+
     const claudeInput = datasets.map((d) => ({
       name: d.name,
       filename: d.filename,
@@ -269,6 +351,29 @@ router.post('/generate', requireUser(), express.json(), async (req, res) => {
       filename: d.filename,
       rowCount: d.rowCount,
     }));
+
+    // Persist full rows so future updates can append against this dashboard.
+    // Capped per dataset to keep the JSONB blob bounded; row truncation here
+    // is FIFO (oldest history dropped first).
+    dashboardWithData.analysisContext = {
+      datasets: datasets.map((d) => ({
+        name: d.name,
+        filename: d.filename,
+        rowCount: d.rowCount,
+        schema: d.schema,
+        stats: d.stats,
+        sample: d.sample,
+        rows:
+          d.rows.length <= ROW_CAP_PER_DATASET
+            ? d.rows
+            : d.rows.slice(d.rows.length - ROW_CAP_PER_DATASET),
+        rowsTruncated: d.rows.length > ROW_CAP_PER_DATASET,
+      })),
+    };
+
+    if (appendSummary) {
+      dashboardWithData.appendSummary = appendSummary;
+    }
 
     const totalRows = datasets.reduce((sum, d) => sum + d.rowCount, 0);
     const primaryFilename = datasets.length === 1
@@ -328,6 +433,7 @@ router.post('/generate', requireUser(), express.json(), async (req, res) => {
       rowCount: totalRows,
       dashboard: dashboardWithData,
       datasets: dashboardWithData.datasets,
+      appendSummary,
       shareToken,
       userId,
       overage,
@@ -396,6 +502,24 @@ router.post('/', requireUser(), upload.single('file'), async (req, res) => {
       filename: req.file.originalname,
       rowCount: rows.length,
     }];
+
+    // Persist rows on the legacy path too so an "update" against this
+    // dashboard later can still append. Same FIFO cap as the main path.
+    dashboardWithData.analysisContext = {
+      datasets: [{
+        name: baseName,
+        filename: req.file.originalname,
+        rowCount: rows.length,
+        schema,
+        stats,
+        sample,
+        rows:
+          rows.length <= ROW_CAP_PER_DATASET
+            ? rows
+            : rows.slice(rows.length - ROW_CAP_PER_DATASET),
+        rowsTruncated: rows.length > ROW_CAP_PER_DATASET,
+      }],
+    };
 
     let savedId = null;
     let saveError = null;

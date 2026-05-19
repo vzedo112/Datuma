@@ -224,6 +224,7 @@ export default function Upload() {
         datasets={uploadResult.datasets}
         crossFileFindings={uploadResult.crossFileFindings}
         crossUploadFindings={uploadResult.crossUploadFindings}
+        parentDashboardId={parentId}
         onBack={backToPick}
         onProceed={startGenerate}
         generating={false}
