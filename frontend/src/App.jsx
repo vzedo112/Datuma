@@ -12,6 +12,10 @@ import { setTokenGetter } from "./services/api";
 
 import Home from "./pages/Home";
 import Pricing from "./pages/Pricing";
+import About from "./pages/About";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
+import Security from "./pages/Security";
 import SignInPage from "./pages/SignIn";
 import SignUpPage from "./pages/SignUp";
 import AuthSetupNotice from "./pages/AuthSetupNotice";
@@ -55,6 +59,10 @@ function Routing() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/pricing" element={<Pricing />} />
+      <Route path="/about" element={<About />} />
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/security" element={<Security />} />
       <Route path="/share/:token" element={<SharedDashboard />} />
       {isClerkConfigured ? (
         <>

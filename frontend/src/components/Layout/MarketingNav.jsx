@@ -122,6 +122,14 @@ export default function MarketingNav() {
             <span className={cn("text-brand font-mono transition-all", scrolled ? "text-[10px] mt-0.5" : "text-xs mt-1")}>
               ™
             </span>
+            <span
+              className={cn(
+                "ml-1 px-1.5 py-0.5 rounded font-mono uppercase tracking-widest bg-foreground/8 text-foreground/70 border border-foreground/10 transition-all",
+                scrolled ? "text-[9px]" : "text-[10px]"
+              )}
+            >
+              Beta
+            </span>
           </Link>
 
           <div className="hidden md:flex items-center gap-10">
