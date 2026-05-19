@@ -85,11 +85,53 @@ function invalidatePlanCache(userId) {
   else planCache.clear();
 }
 
+// Spend cap is the per-user monthly overage ceiling, stored in cents on
+// Clerk publicMetadata.spendCapCents. Defaults to 0 (no overage allowed).
+async function getUserSpendCap(req) {
+  if (!isClerkConfigured) return 0;
+  const userId = getUserId(req);
+  if (!userId) return 0;
+  try {
+    const user = await clerkClient.users.getUser(userId);
+    const raw = user?.publicMetadata?.spendCapCents;
+    const n = Number(raw);
+    return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
+  } catch (err) {
+    console.warn('[auth] failed to read spend cap:', err.message);
+    return 0;
+  }
+}
+
+async function setUserSpendCap(userId, amountCents) {
+  if (!isClerkConfigured || !userId) return false;
+  const safe = Number.isFinite(amountCents) && amountCents >= 0
+    ? Math.floor(amountCents)
+    : 0;
+  const user = await clerkClient.users.getUser(userId);
+  await clerkClient.users.updateUserMetadata(userId, {
+    publicMetadata: { ...user.publicMetadata, spendCapCents: safe },
+  });
+  return true;
+}
+
+async function getStripeCustomerId(userId) {
+  if (!isClerkConfigured || !userId) return null;
+  try {
+    const user = await clerkClient.users.getUser(userId);
+    return user?.publicMetadata?.stripeCustomerId ?? null;
+  } catch {
+    return null;
+  }
+}
+
 module.exports = {
   withClerk,
   requireUser,
   getUserId,
   getUserPlan,
+  getUserSpendCap,
+  setUserSpendCap,
+  getStripeCustomerId,
   invalidatePlanCache,
   isClerkConfigured,
 };

@@ -1,6 +1,6 @@
 const express = require('express');
 const { clerkClient } = require('@clerk/express');
-const { requireUser, getUserId } = require('../middleware/auth');
+const { requireUser, getUserId, setUserSpendCap } = require('../middleware/auth');
 const { stripe, isStripeConfigured, getPriceId } = require('../services/stripe');
 
 const router = express.Router();
@@ -85,6 +85,28 @@ router.post('/portal', requireUser(), async (req, res) => {
     res.json({ url: session.url });
   } catch (err) {
     console.error('Portal error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/billing/spend-cap — sets the user's monthly overage ceiling in
+// cents. 0 means "no overage allowed" (hard-block at included).
+router.patch('/spend-cap', requireUser(), async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { amountCents } = req.body || {};
+    const n = Number(amountCents);
+    if (!Number.isFinite(n) || n < 0) {
+      return res.status(400).json({ error: 'amountCents must be a non-negative number' });
+    }
+    if (n > 100_000_00) {
+      return res.status(400).json({ error: 'Spend cap may not exceed €100,000.' });
+    }
+    const ok = await setUserSpendCap(userId, Math.floor(n));
+    if (!ok) return res.status(503).json({ error: 'Auth provider unavailable' });
+    res.json({ spendCapCents: Math.floor(n) });
+  } catch (err) {
+    console.error('Spend cap update error:', err);
     res.status(500).json({ error: err.message });
   }
 });

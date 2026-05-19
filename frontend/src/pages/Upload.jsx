@@ -149,6 +149,8 @@ export default function Upload() {
       let message;
       if (data?.code === "QUOTA_EXCEEDED") {
         message = `${data.error} Visit Pricing to upgrade your plan.`;
+      } else if (data?.code === "SPEND_CAP_HIT") {
+        message = `${data.error}`;
       } else if (data?.code === "ROW_LIMIT_EXCEEDED") {
         message = data.error;
       } else if (data?.code === "FILE_LIMIT_EXCEEDED") {

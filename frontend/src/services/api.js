@@ -91,6 +91,11 @@ export async function openBillingPortal() {
   return response.data; // { url }
 }
 
+export async function setSpendCap(amountCents) {
+  const response = await api.patch("/api/billing/spend-cap", { amountCents });
+  return response.data; // { spendCapCents }
+}
+
 export async function createShareLink(id) {
   const response = await api.post(`/api/dashboards/${id}/share`);
   return response.data; // { token }

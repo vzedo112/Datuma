@@ -6,7 +6,14 @@ const { analyzeQuality } = require('../services/dataQuality');
 const { analyzeCrossFile, analyzeCrossUpload } = require('../services/overlapAnalysis');
 const { generateDashboard } = require('../services/claude');
 const { attachChartData } = require('../services/aggregator');
-const { requireUser, getUserId, getUserPlan } = require('../middleware/auth');
+const {
+  requireUser,
+  getUserId,
+  getUserPlan,
+  getUserSpendCap,
+  getStripeCustomerId,
+} = require('../middleware/auth');
+const { createOverageInvoiceItem } = require('../services/stripe');
 const {
   saveDashboard,
   countThisMonth,
@@ -74,7 +81,7 @@ router.post(
       const overInclusive =
         Number.isFinite(monthlyIncluded) && used >= monthlyIncluded;
 
-      if (overInclusive && plan.overageEuros === null) {
+      if (overInclusive && plan.overageCents === null) {
         return res.status(402).json({
           error: `You've used all ${monthlyIncluded} dashboards in your ${plan.name} plan this month. Upgrade to keep going.`,
           code: 'QUOTA_EXCEEDED',
@@ -82,6 +89,27 @@ router.post(
           limit: monthlyIncluded,
           plan: plan.key,
         });
+      }
+
+      // Spend cap check — only relevant when the next dashboard would be an
+      // overage and the plan supports paid overages (Pro/Team/Enterprise).
+      if (overInclusive && plan.overageCents > 0) {
+        const spendCap = await getUserSpendCap(req);
+        const overageAfter = used - monthlyIncluded + 1;
+        const chargeAfterCents = overageAfter * plan.overageCents;
+        if (chargeAfterCents > spendCap) {
+          return res.status(402).json({
+            error: spendCap === 0
+              ? `You've used all ${monthlyIncluded} dashboards included in your ${plan.name} plan. Raise your monthly spend cap in Settings to keep going at €${plan.overageEuros.toFixed(2)} each.`
+              : `Generating this dashboard would put you over your €${(spendCap / 100).toFixed(2)} monthly spend cap. Raise it in Settings to continue.`,
+            code: 'SPEND_CAP_HIT',
+            used,
+            limit: monthlyIncluded,
+            spendCapCents: spendCap,
+            overageCents: plan.overageCents,
+            plan: plan.key,
+          });
+        }
       }
 
       const nameOverrides = parseDatasetNames(req.body) || [];
@@ -269,9 +297,30 @@ router.post('/generate', requireUser(), express.json(), async (req, res) => {
     uploadSession.evict(uploadId);
 
     const used = await countThisMonth(userId);
-    const overage = Number.isFinite(plan.monthlyIncluded) && used > plan.monthlyIncluded
+    const wasOverage =
+      Number.isFinite(plan.monthlyIncluded) && used > plan.monthlyIncluded;
+    const overage = wasOverage
       ? { isOverage: true, overageEuros: plan.overageEuros, used }
       : null;
+
+    // Bill the overage immediately as a Stripe invoice item on the next renewal.
+    // Best-effort: if Stripe / customer ID are unavailable we log and move on so
+    // the user still gets their dashboard. Saving succeeded; refunding their
+    // generation effort is worse than a missed invoice line we can backfill.
+    if (wasOverage && plan.overageCents > 0 && savedId !== null) {
+      try {
+        const customerId = await getStripeCustomerId(userId);
+        if (customerId) {
+          await createOverageInvoiceItem({
+            customerId,
+            amountCents: plan.overageCents,
+            description: `Datuma — dashboard overage (${plan.name})`,
+          });
+        }
+      } catch (err) {
+        console.warn('[billing] failed to record overage invoice item:', err.message);
+      }
+    }
 
     res.json({
       id: savedId,

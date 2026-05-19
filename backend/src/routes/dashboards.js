@@ -1,5 +1,10 @@
 const express = require('express');
-const { requireUser, getUserId, getUserPlan } = require('../middleware/auth');
+const {
+  requireUser,
+  getUserId,
+  getUserPlan,
+  getUserSpendCap,
+} = require('../middleware/auth');
 const { getPlan, serializePlan } = require('../services/plans');
 const {
   listDashboards,
@@ -27,13 +32,28 @@ router.get('/', requireUser(), async (req, res) => {
 router.get('/usage', requireUser(), async (req, res) => {
   try {
     const userId = getUserId(req);
-    const [used, planKey] = await Promise.all([
+    const [used, planKey, spendCapCents] = await Promise.all([
       countThisMonth(userId),
       getUserPlan(req),
+      getUserSpendCap(req),
     ]);
     const plan = getPlan(planKey);
+
+    const monthlyIncluded = Number.isFinite(plan.monthlyIncluded)
+      ? plan.monthlyIncluded
+      : null;
+    const overageCount =
+      monthlyIncluded === null ? 0 : Math.max(0, used - monthlyIncluded);
+    const overageCents =
+      plan.overageCents !== null && plan.overageCents !== undefined
+        ? overageCount * plan.overageCents
+        : 0;
+
     res.json({
       used,
+      overageCount,
+      overageCents,
+      spendCapCents,
       plan: serializePlan(plan),
     });
   } catch (err) {

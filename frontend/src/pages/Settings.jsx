@@ -11,11 +11,18 @@ import {
   Mail,
   Loader2,
   ExternalLink,
+  Gauge,
+  AlertCircle,
+  Check,
 } from "lucide-react";
 import { useUser, useClerk } from "@clerk/clerk-react";
-import { getUsage, openBillingPortal } from "../services/api";
+import { getUsage, openBillingPortal, setSpendCap } from "../services/api";
 import { isClerkConfigured } from "../lib/auth";
 import ClerkAccountSection from "../components/Settings/ClerkAccountSection";
+
+function formatEuro(cents) {
+  return `€${(cents / 100).toFixed(2)}`;
+}
 
 function Section({ icon: Icon, title, eyebrow, children, action }) {
   return (
@@ -98,6 +105,11 @@ export default function Settings() {
   const planKey = plan?.key ?? "starter";
   const included = plan?.monthlyIncluded;
   const used = usage?.used ?? 0;
+  const overageCount = usage?.overageCount ?? 0;
+  const overageCents = usage?.overageCents ?? 0;
+  const spendCapCents = usage?.spendCapCents ?? 0;
+  const planSupportsOverage =
+    plan?.overageCents !== null && plan?.overageCents !== undefined && plan?.overageCents > 0;
   const usageRatio =
     Number.isFinite(included) && included > 0
       ? Math.min(used / included, 1)
@@ -200,6 +212,21 @@ export default function Settings() {
                 {remainingLabel}
               </p>
             </div>
+          )}
+
+          {planSupportsOverage && (
+            <SpendCapControl
+              planName={planName}
+              overageCents={plan.overageCents}
+              overageCount={overageCount}
+              accruedOverageCents={overageCents}
+              spendCapCents={spendCapCents}
+              onUpdated={(newCapCents) =>
+                setUsage((prev) =>
+                  prev ? { ...prev, spendCapCents: newCapCents } : prev
+                )
+              }
+            />
           )}
 
           {(planKey === "pro" || planKey === "team") && (
@@ -345,5 +372,145 @@ function DangerFallback() {
     <p className="text-sm text-muted-foreground">
       Clerk isn't configured — sign-out and account deletion live behind it.
     </p>
+  );
+}
+
+function SpendCapControl({
+  planName,
+  overageCents,
+  overageCount,
+  accruedOverageCents,
+  spendCapCents,
+  onUpdated,
+}) {
+  const [draftEuros, setDraftEuros] = useState(
+    spendCapCents > 0 ? String(Math.round(spendCapCents / 100)) : ""
+  );
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    setDraftEuros(spendCapCents > 0 ? String(Math.round(spendCapCents / 100)) : "");
+  }, [spendCapCents]);
+
+  const dirty =
+    String(spendCapCents > 0 ? Math.round(spendCapCents / 100) : "") !== draftEuros;
+
+  const save = async () => {
+    const trimmed = draftEuros.trim();
+    const n = trimmed === "" ? 0 : Number(trimmed);
+    if (!Number.isFinite(n) || n < 0) {
+      setError("Enter a whole number of euros, or leave blank for €0.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const { spendCapCents: nextCents } = await setSpendCap(Math.floor(n * 100));
+      onUpdated?.(nextCents);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1800);
+    } catch (err) {
+      setError(
+        err?.response?.data?.error || err?.message || "Couldn't update spend cap."
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const overageRateEur = (overageCents / 100).toFixed(2);
+  const accrued = formatEuro(accruedOverageCents);
+  const cap = formatEuro(spendCapCents);
+  const approaching =
+    spendCapCents > 0 && accruedOverageCents / spendCapCents >= 0.8;
+
+  return (
+    <div className="mt-5 pt-5 border-t border-border space-y-4">
+      <div className="flex items-start gap-3">
+        <div className="p-1.5 rounded-md bg-accent shrink-0 mt-0.5">
+          <Gauge className="w-3.5 h-3.5" strokeWidth={1.7} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium">Overage spend cap</p>
+          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+            Once you exceed your {planName} include, each extra dashboard costs
+            €{overageRateEur}. Datuma will only charge up to your monthly cap — set
+            it to €0 to never go over your include.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-3">
+        <div className="rounded-lg border border-border bg-background p-4">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
+            This month so far
+          </p>
+          <p className="font-display text-2xl tracking-tight">{accrued}</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {overageCount === 0
+              ? "No overage yet."
+              : `${overageCount} dashboard${overageCount === 1 ? "" : "s"} over include.`}
+          </p>
+        </div>
+        <div
+          className={`rounded-lg border p-4 ${
+            approaching ? "border-amber-200 bg-amber-50/50" : "border-border bg-background"
+          }`}
+        >
+          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
+            Current cap
+          </p>
+          <p className="font-display text-2xl tracking-tight">{cap}</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {spendCapCents === 0
+              ? "Hard-blocked at include."
+              : approaching
+              ? "Approaching your cap."
+              : "Plenty of headroom."}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row sm:items-end gap-3 pt-1">
+        <label className="flex-1 min-w-0">
+          <span className="block font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-1.5">
+            New monthly cap (€)
+          </span>
+          <input
+            type="number"
+            min="0"
+            step="1"
+            inputMode="numeric"
+            value={draftEuros}
+            onChange={(e) => setDraftEuros(e.target.value.replace(/[^0-9]/g, ""))}
+            disabled={busy}
+            placeholder="0"
+            className="w-full h-10 px-3 rounded-md border border-border bg-background focus:outline-none focus:border-foreground text-sm"
+          />
+        </label>
+        <button
+          type="button"
+          onClick={save}
+          disabled={busy || !dirty}
+          className="inline-flex items-center justify-center gap-1.5 h-10 px-5 rounded-md bg-foreground text-background text-sm hover:bg-foreground/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {busy ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : saved ? (
+            <Check className="w-3.5 h-3.5" />
+          ) : null}
+          {saved ? "Saved" : "Update cap"}
+        </button>
+      </div>
+
+      {error && (
+        <div className="flex items-start gap-2 text-xs text-rose-800">
+          <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+          <span>{error}</span>
+        </div>
+      )}
+    </div>
   );
 }
