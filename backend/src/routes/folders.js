@@ -43,6 +43,31 @@ router.post('/', requireUser(), async (req, res) => {
   }
 });
 
+router.patch('/move', requireUser(), async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { dashboardId, folderId } = req.body || {};
+    const did = Number(dashboardId);
+    if (!Number.isInteger(did)) {
+      return res.status(400).json({ error: 'dashboardId required' });
+    }
+    let target = null;
+    if (folderId !== null && folderId !== undefined) {
+      const fid = Number(folderId);
+      if (!Number.isInteger(fid)) {
+        return res.status(400).json({ error: 'folderId must be an integer or null' });
+      }
+      target = fid;
+    }
+    const ok = await moveDashboardToFolder(userId, did, target);
+    if (!ok) return res.status(404).json({ error: 'Dashboard or folder not found' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Move dashboard error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.patch('/:id', requireUser(), async (req, res) => {
   try {
     const userId = getUserId(req);
@@ -76,32 +101,6 @@ router.delete('/:id', requireUser(), async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('Delete folder error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// PATCH /api/folders/move — body: { dashboardId, folderId | null }
-router.patch('/move', requireUser(), async (req, res) => {
-  try {
-    const userId = getUserId(req);
-    const { dashboardId, folderId } = req.body || {};
-    const did = Number(dashboardId);
-    if (!Number.isInteger(did)) {
-      return res.status(400).json({ error: 'dashboardId required' });
-    }
-    let target = null;
-    if (folderId !== null && folderId !== undefined) {
-      const fid = Number(folderId);
-      if (!Number.isInteger(fid)) {
-        return res.status(400).json({ error: 'folderId must be an integer or null' });
-      }
-      target = fid;
-    }
-    const ok = await moveDashboardToFolder(userId, did, target);
-    if (!ok) return res.status(404).json({ error: 'Dashboard or folder not found' });
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('Move dashboard error:', err);
     res.status(500).json({ error: err.message });
   }
 });
