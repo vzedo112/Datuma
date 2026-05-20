@@ -44,6 +44,30 @@ body {
   border-color: var(--border);
 }
 
+/* Kill the default browser focus outline on app controls — it's electric blue
+   on macOS and clashes with the warm cream palette. Keep a subtle keyboard-
+   only ring via :focus-visible so accessibility isn't lost. */
+button:focus,
+[role="button"]:focus,
+a:focus,
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+}
+button:focus-visible,
+[role="button"]:focus-visible,
+a:focus-visible {
+  outline: 2px solid rgba(20, 17, 13, 0.25);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+}
+
 @layer utilities {
   .font-display {
     font-family: "Geist", "Inter", system-ui, sans-serif;
