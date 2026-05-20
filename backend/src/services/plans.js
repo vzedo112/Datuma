@@ -13,6 +13,9 @@ const PLANS = {
     rowLimit: 50_000,
     seats: 1,
     fileLimit: 2,
+    // Chat is a paid feature; Starter doesn't see it at all.
+    chatIncluded: 0,
+    chatOverageCents: null,
   },
   pro: {
     key: 'pro',
@@ -23,6 +26,8 @@ const PLANS = {
     rowLimit: 1_200_000,
     seats: 1,
     fileLimit: 5,
+    chatIncluded: 200,
+    chatOverageCents: 5, // €0.05 per message past the include
   },
   team: {
     key: 'team',
@@ -33,6 +38,8 @@ const PLANS = {
     rowLimit: 1_200_000,
     seats: 5,
     fileLimit: 10,
+    chatIncluded: 1000,
+    chatOverageCents: 3, // €0.03 per message
   },
   enterprise: {
     key: 'enterprise',
@@ -43,6 +50,8 @@ const PLANS = {
     rowLimit: 1_200_000,
     seats: Infinity,
     fileLimit: 20,
+    chatIncluded: Infinity,
+    chatOverageCents: 0,
   },
 };
 
@@ -58,6 +67,8 @@ function serializePlan(plan) {
     monthlyIncluded:
       Number.isFinite(plan.monthlyIncluded) ? plan.monthlyIncluded : null,
     seats: Number.isFinite(plan.seats) ? plan.seats : null,
+    chatIncluded:
+      Number.isFinite(plan.chatIncluded) ? plan.chatIncluded : null,
   };
 }
 
