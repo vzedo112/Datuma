@@ -55,6 +55,7 @@ const plans = [
     meter: "Includes 100 dashboards · €1.00 each after",
     cta: "Get started",
     href: "/app",
+    comingSoon: true,
     features: [
       "Everything in Pro",
       "Up to 5 seats",
@@ -74,6 +75,7 @@ const plans = [
     annual: null,
     cta: "Talk to sales",
     href: "mailto:hello@datuma.app",
+    comingSoon: true,
     features: [
       "Everything in Team",
       "Unlimited seats, dashboards, and datasets",
@@ -139,6 +141,9 @@ function Plans({ annual }) {
   const handleCta = async (p) => {
     setError(null);
 
+    // Coming-soon plans are non-interactive; button is rendered disabled.
+    if (p.comingSoon) return;
+
     // Starter = just go to the app (sign-in flow handled by route gating).
     if (p.key === "starter") {
       navigate("/app");
@@ -203,6 +208,11 @@ function Plans({ annual }) {
                   Most Popular
                 </span>
               )}
+              {p.comingSoon && (
+                <span className="px-2 py-0.5 bg-foreground/10 text-foreground text-[10px] font-mono uppercase tracking-widest rounded">
+                  Coming Soon
+                </span>
+              )}
             </div>
             <h3 className="font-display text-3xl">{p.name}</h3>
             <p className="text-sm text-muted-foreground mt-2">{p.description}</p>
@@ -240,15 +250,19 @@ function Plans({ annual }) {
           <button
             type="button"
             onClick={() => handleCta(p)}
-            disabled={loadingKey === p.key}
+            disabled={loadingKey === p.key || p.comingSoon}
             className={cn(
-              "w-full py-3.5 inline-flex items-center justify-center gap-2 text-sm font-medium transition-all group rounded-md disabled:opacity-60 disabled:cursor-wait",
-              p.popular
-                ? "bg-foreground text-background hover:bg-foreground/90"
-                : "border border-foreground/20 hover:border-foreground hover:bg-foreground/5"
+              "w-full py-3.5 inline-flex items-center justify-center gap-2 text-sm font-medium transition-all group rounded-md",
+              p.comingSoon
+                ? "border border-foreground/10 bg-foreground/5 text-muted-foreground cursor-not-allowed"
+                : p.popular
+                ? "bg-foreground text-background hover:bg-foreground/90 disabled:opacity-60 disabled:cursor-wait"
+                : "border border-foreground/20 hover:border-foreground hover:bg-foreground/5 disabled:opacity-60 disabled:cursor-wait"
             )}
           >
-            {loadingKey === p.key ? (
+            {p.comingSoon ? (
+              "Coming soon"
+            ) : loadingKey === p.key ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
                 Redirecting…
