@@ -325,7 +325,7 @@ router.post('/:id/chat', requireUser(), async (req, res) => {
       usage: {
         used: usedBefore + 1,
         included: includedFinite ? plan.chatIncluded : null,
-        overage: overInclude ? { isOverage: true, overageCents } : null,
+        overageCents: plan.chatOverageCents ?? null,
       },
     });
   } catch (err) {

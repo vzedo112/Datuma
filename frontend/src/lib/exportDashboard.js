@@ -2,9 +2,11 @@ import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
 
 function safeFilename(name) {
-  return (name || "dashboard")
-    .toString()
-    .trim()
+  let base = (name || "dashboard").toString().trim();
+  // Strip common file extensions if present at the end
+  base = base.replace(/\.(csv|xlsx|xls|json|txt)$/i, "");
+  
+  return base
     .replace(/[^a-zA-Z0-9-_.]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 80) || "dashboard";

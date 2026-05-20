@@ -25,12 +25,18 @@ export default function ExportMenu({ getNode, filename }) {
     }
     setBusy(kind);
     setError(null);
+    setOpen(false);
+    
+    // Give React a tick to close the menu in the DOM, so it definitely
+    // doesn't cause any layout shift/clipping bugs during capture.
+    await new Promise((r) => setTimeout(r, 50));
+
     try {
       if (kind === "pdf") await exportPDF(node, filename);
       else await exportPNG(node, filename);
-      setOpen(false);
     } catch (err) {
       setError(err?.message || "Export failed.");
+      setOpen(true);
     } finally {
       setBusy(null);
     }
@@ -62,7 +68,6 @@ export default function ExportMenu({ getNode, filename }) {
           >
             <FileText className="w-4 h-4 text-muted-foreground" />
             <span className="flex-1">Export as PDF</span>
-            {busy === "pdf" && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
           </button>
           <button
             type="button"
@@ -72,7 +77,6 @@ export default function ExportMenu({ getNode, filename }) {
           >
             <FileImage className="w-4 h-4 text-muted-foreground" />
             <span className="flex-1">Export as PNG</span>
-            {busy === "png" && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
           </button>
 
           {error && (

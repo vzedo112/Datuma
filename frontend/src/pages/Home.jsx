@@ -189,10 +189,10 @@ function Hero() {
           {[...Array(2)].map((_, k) => (
             <div key={k} className="flex gap-16">
               {[
-                { value: "30 sec", label: "to first insight", company: "AVERAGE" },
-                { value: "1.2M", label: "rows per upload", company: "MAX FILE" },
-                { value: "0", label: "SQL written", company: "EVER" },
-                { value: "94%", label: "of users skip Excel", company: "AFTER 1 WK" },
+                /* { value: "30 sec", label: "to first insight", company: "AVERAGE" }, */
+                /* { value: "1.2M", label: "rows per upload", company: "MAX FILE" }, */
+                /* { value: "0", label: "SQL written", company: "EVER" }, */
+                /* { value: "94%", label: "of users skip Excel", company: "AFTER 1 WK" }, */
               ].map((s) => (
                 <div key={`${s.company}-${k}`} className="flex items-baseline gap-4">
                   <span className="text-4xl lg:text-5xl font-display">{s.value}</span>
