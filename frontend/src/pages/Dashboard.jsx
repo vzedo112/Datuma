@@ -12,6 +12,7 @@ import {
 import DashboardView from "../components/Dashboard/DashboardView";
 import ShareMenu from "../components/Dashboard/ShareMenu";
 import ExportMenu from "../components/Dashboard/ExportMenu";
+import ChatPanel from "../components/Dashboard/ChatPanel";
 import { useDashboard } from "../context/DashboardContext";
 import { getDashboardById, listDashboards } from "../services/api";
 
@@ -205,6 +206,11 @@ export default function Dashboard() {
         actions={actions}
         viewRef={viewRef}
       />
+      {dashboardId && (
+        <div className="max-w-[1400px] mx-auto mt-6">
+          <ChatPanel dashboardId={dashboardId} />
+        </div>
+      )}
     </>
   );
 }
