@@ -11,14 +11,31 @@ import {
   Pencil,
   Trash2,
   RefreshCw,
+  Folder,
+  FolderPlus,
+  FolderOpen,
+  FolderX,
+  FolderInput,
+  Inbox,
+  LayoutGrid,
+  Check,
+  X as XIcon,
 } from "lucide-react";
 import {
-  listDashboards,
   getDashboardById,
   renameDashboard,
   deleteDashboard,
+  listFolders,
+  createFolder,
+  renameFolder,
+  deleteFolder,
+  moveDashboardToFolder,
+  listDashboardsInFolder,
 } from "../services/api";
 import { useDashboard } from "../context/DashboardContext";
+
+const ALL = "all";
+const UNFILED = "unfiled";
 
 function formatDate(iso) {
   if (!iso) return "";
@@ -36,14 +53,259 @@ function displayName(item) {
   return item.name || item.title || item.filename;
 }
 
-function RowMenu({ onRename, onUpdate, onDelete }) {
+// --- Folders rail ---
+
+function FoldersRail({
+  folders,
+  unfiled,
+  selected,
+  onSelect,
+  onCreate,
+  onRename,
+  onDelete,
+  totalCount,
+}) {
+  const [creating, setCreating] = useState(false);
+  const [draft, setDraft] = useState("");
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (creating && inputRef.current) inputRef.current.focus();
+  }, [creating]);
+
+  const commit = async () => {
+    const name = draft.trim();
+    if (!name) {
+      setCreating(false);
+      setDraft("");
+      return;
+    }
+    await onCreate(name);
+    setDraft("");
+    setCreating(false);
+  };
+
+  const items = [
+    {
+      key: ALL,
+      label: "All dashboards",
+      count: totalCount,
+      icon: LayoutGrid,
+    },
+    {
+      key: UNFILED,
+      label: "Unfiled",
+      count: unfiled,
+      icon: Inbox,
+    },
+  ];
+
+  return (
+    <aside className="lg:sticky lg:top-6 lg:self-start">
+      <div className="flex items-center justify-between mb-3 px-1">
+        <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          Folders
+        </span>
+        <button
+          type="button"
+          onClick={() => setCreating(true)}
+          className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+          aria-label="New folder"
+          title="New folder"
+        >
+          <FolderPlus className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      <ul className="space-y-1">
+        {items.map(({ key, label, count, icon: Icon }) => (
+          <li key={key}>
+            <button
+              type="button"
+              onClick={() => onSelect(key)}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-left transition-colors ${
+                selected === key
+                  ? "bg-foreground text-background"
+                  : "text-foreground/80 hover:bg-accent"
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate flex-1">{label}</span>
+              <span
+                className={`text-[10px] font-mono ${
+                  selected === key ? "text-background/70" : "text-muted-foreground"
+                }`}
+              >
+                {count}
+              </span>
+            </button>
+          </li>
+        ))}
+
+        {folders.map((f) => (
+          <FolderRow
+            key={f.id}
+            folder={f}
+            isSelected={selected === f.id}
+            onSelect={() => onSelect(f.id)}
+            onRename={(newName) => onRename(f.id, newName)}
+            onDelete={() => onDelete(f.id)}
+          />
+        ))}
+
+        {creating && (
+          <li className="px-3 py-2 flex items-center gap-2 text-sm">
+            <Folder className="w-3.5 h-3.5 text-muted-foreground" />
+            <input
+              ref={inputRef}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commit();
+                if (e.key === "Escape") {
+                  setDraft("");
+                  setCreating(false);
+                }
+              }}
+              onBlur={commit}
+              maxLength={60}
+              placeholder="Folder name"
+              className="flex-1 bg-background border border-border rounded px-2 py-1 text-sm focus:outline-none focus:border-foreground"
+            />
+          </li>
+        )}
+      </ul>
+    </aside>
+  );
+}
+
+function FolderRow({ folder, isSelected, onSelect, onRename, onDelete }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(folder.name);
+  const [hover, setHover] = useState(false);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editing]);
+
+  const commit = async () => {
+    const name = draft.trim();
+    if (name && name !== folder.name) {
+      await onRename(name);
+    }
+    setEditing(false);
+  };
+
+  const confirmDelete = async () => {
+    if (
+      window.confirm(
+        `Delete folder "${folder.name}"? Dashboards inside will fall back to "Unfiled".`
+      )
+    ) {
+      await onDelete();
+    }
+  };
+
+  return (
+    <li
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      className="relative"
+    >
+      <button
+        type="button"
+        onClick={onSelect}
+        className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-left transition-colors ${
+          isSelected
+            ? "bg-foreground text-background"
+            : "text-foreground/80 hover:bg-accent"
+        }`}
+      >
+        {isSelected ? (
+          <FolderOpen className="w-3.5 h-3.5 shrink-0" />
+        ) : (
+          <Folder className="w-3.5 h-3.5 shrink-0" />
+        )}
+        {editing ? (
+          <input
+            ref={inputRef}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              if (e.key === "Enter") commit();
+              if (e.key === "Escape") {
+                setDraft(folder.name);
+                setEditing(false);
+              }
+            }}
+            onBlur={commit}
+            onClick={(e) => e.stopPropagation()}
+            maxLength={60}
+            className="flex-1 bg-background border border-border rounded px-1.5 py-0.5 text-sm focus:outline-none focus:border-foreground text-foreground"
+          />
+        ) : (
+          <span className="truncate flex-1">{folder.name}</span>
+        )}
+        <span
+          className={`text-[10px] font-mono ${
+            isSelected ? "text-background/70" : "text-muted-foreground"
+          }`}
+        >
+          {folder.dashboard_count ?? 0}
+        </span>
+      </button>
+
+      {hover && !editing && (
+        <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 bg-card border border-border rounded-md shadow-sm">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditing(true);
+            }}
+            className="p-1 hover:bg-accent text-muted-foreground hover:text-foreground"
+            aria-label="Rename folder"
+            title="Rename"
+          >
+            <Pencil className="w-3 h-3" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              confirmDelete();
+            }}
+            className="p-1 hover:bg-rose-50 text-muted-foreground hover:text-rose-700"
+            aria-label="Delete folder"
+            title="Delete"
+          >
+            <FolderX className="w-3 h-3" />
+          </button>
+        </div>
+      )}
+    </li>
+  );
+}
+
+// --- Row + row menu ---
+
+function RowMenu({ folders, currentFolderId, onMove, onRename, onUpdate, onDelete }) {
   const [open, setOpen] = useState(false);
+  const [movingOpen, setMovingOpen] = useState(false);
   const ref = useRef(null);
 
   useEffect(() => {
     if (!open) return;
     const onClick = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target)) {
+        setOpen(false);
+        setMovingOpen(false);
+      }
     };
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
@@ -63,7 +325,7 @@ function RowMenu({ onRename, onUpdate, onDelete }) {
         <MoreHorizontal className="w-4 h-4" />
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 z-20 w-52 rounded-lg border border-border bg-background shadow-md py-1">
+        <div className="absolute right-0 top-full mt-1 z-20 w-56 rounded-lg border border-border bg-background shadow-md py-1">
           <button
             type="button"
             onClick={(e) => {
@@ -88,6 +350,50 @@ function RowMenu({ onRename, onUpdate, onDelete }) {
             <Pencil className="w-3.5 h-3.5" />
             Rename
           </button>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              setMovingOpen((v) => !v);
+            }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-accent"
+          >
+            <FolderInput className="w-3.5 h-3.5" />
+            Move to folder…
+          </button>
+          {movingOpen && (
+            <div className="border-t border-border bg-background py-1 max-h-56 overflow-y-auto">
+              <MoveTarget
+                label="Unfiled"
+                active={!currentFolderId}
+                onClick={() => {
+                  setOpen(false);
+                  setMovingOpen(false);
+                  onMove(null);
+                }}
+              />
+              {folders.map((f) => (
+                <MoveTarget
+                  key={f.id}
+                  label={f.name}
+                  active={currentFolderId === f.id}
+                  onClick={() => {
+                    setOpen(false);
+                    setMovingOpen(false);
+                    onMove(f.id);
+                  }}
+                />
+              ))}
+              {folders.length === 0 && (
+                <p className="px-3 py-2 text-xs text-muted-foreground">
+                  No folders yet — create one in the sidebar.
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="my-1 border-t border-border" />
           <button
             type="button"
             onClick={(e) => {
@@ -106,7 +412,31 @@ function RowMenu({ onRename, onUpdate, onDelete }) {
   );
 }
 
-function HistoryRow({ item, revisionLabel, onOpen, onUpdate, onRenamed, onDeleted, onError }) {
+function MoveTarget({ label, active, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-accent"
+    >
+      <Folder className="w-3.5 h-3.5 text-muted-foreground" />
+      <span className="flex-1 truncate">{label}</span>
+      {active && <Check className="w-3 h-3 text-foreground" />}
+    </button>
+  );
+}
+
+function HistoryRow({
+  item,
+  revisionLabel,
+  folders,
+  onOpen,
+  onUpdate,
+  onRenamed,
+  onDeleted,
+  onMoved,
+  onError,
+}) {
   const [renaming, setRenaming] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -156,6 +486,22 @@ function HistoryRow({ item, revisionLabel, onOpen, onUpdate, onRenamed, onDelete
     }
   };
 
+  const handleMove = async (folderId) => {
+    setBusy(true);
+    try {
+      await moveDashboardToFolder(item.id, folderId);
+      onMoved(item.id, folderId);
+    } catch (err) {
+      onError(err?.response?.data?.error || err?.message || "Couldn't move.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const folderLabel = item.folder_id
+    ? folders.find((f) => f.id === item.folder_id)?.name
+    : null;
+
   return (
     <li>
       <div
@@ -195,6 +541,12 @@ function HistoryRow({ item, revisionLabel, onOpen, onUpdate, onRenamed, onDelete
                     {revisionLabel}
                   </span>
                 )}
+                {folderLabel && (
+                  <span className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-accent text-foreground/70 text-[10px] font-mono uppercase tracking-widest">
+                    <Folder className="w-2.5 h-2.5" />
+                    {folderLabel}
+                  </span>
+                )}
               </div>
               <p className="text-xs text-muted-foreground truncate mt-0.5">
                 {item.filename} · {Number(item.row_count).toLocaleString()} rows
@@ -211,9 +563,12 @@ function HistoryRow({ item, revisionLabel, onOpen, onUpdate, onRenamed, onDelete
         {!renaming && !confirmingDelete && (
           <>
             <RowMenu
+              folders={folders}
+              currentFolderId={item.folder_id}
               onRename={() => setRenaming(true)}
               onUpdate={() => onUpdate(item.id)}
               onDelete={() => setConfirmingDelete(true)}
+              onMove={handleMove}
             />
             <button
               type="button"
@@ -255,20 +610,47 @@ function HistoryRow({ item, revisionLabel, onOpen, onUpdate, onRenamed, onDelete
   );
 }
 
+// --- Page ---
+
 export default function History() {
   const [items, setItems] = useState([]);
+  const [folders, setFolders] = useState([]);
+  const [unfiledCount, setUnfiledCount] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
+  const [selected, setSelected] = useState(ALL);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { setResult } = useDashboard();
   const navigate = useNavigate();
 
+  // Convert UI selection into a query param for the items fetch.
+  const folderQueryFor = (sel) => {
+    if (sel === ALL) return undefined;
+    if (sel === UNFILED) return null;
+    return sel;
+  };
+
+  // Fetch folders + items together on mount and whenever selection changes.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         setLoading(true);
-        const list = await listDashboards();
-        if (!cancelled) setItems(list);
+        const [fldData, itemsList] = await Promise.all([
+          listFolders().catch(() => ({ items: [], unfiled: 0 })),
+          listDashboardsInFolder(folderQueryFor(selected)),
+        ]);
+        if (cancelled) return;
+        setFolders(fldData.items ?? []);
+        setUnfiledCount(fldData.unfiled ?? 0);
+        setItems(itemsList);
+        // Total = sum of all folder counts + unfiled
+        const total =
+          (fldData.items ?? []).reduce(
+            (sum, f) => sum + (f.dashboard_count ?? 0),
+            0
+          ) + (fldData.unfiled ?? 0);
+        setTotalCount(total);
       } catch (err) {
         if (!cancelled) {
           const msg =
@@ -286,7 +668,24 @@ export default function History() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [selected]);
+
+  // Refresh folder counts (without touching the items list).
+  const refreshFolderCounts = async () => {
+    try {
+      const fldData = await listFolders();
+      setFolders(fldData.items ?? []);
+      setUnfiledCount(fldData.unfiled ?? 0);
+      const total =
+        (fldData.items ?? []).reduce(
+          (sum, f) => sum + (f.dashboard_count ?? 0),
+          0
+        ) + (fldData.unfiled ?? 0);
+      setTotalCount(total);
+    } catch {
+      // non-fatal — counts are cosmetic.
+    }
+  };
 
   const openDashboard = async (id) => {
     try {
@@ -308,10 +707,60 @@ export default function History() {
 
   const handleDeleted = (id) => {
     setItems((prev) => prev.filter((it) => it.id !== id));
+    refreshFolderCounts();
   };
 
-  // Compute per-row revision labels. For each row that has a parent, walk the
-  // chain via parent_id to determine its version number within its family.
+  const handleMoved = (id, folderId) => {
+    setItems((prev) => {
+      // If we're viewing a specific folder/unfiled, the item leaves the visible list.
+      if (selected === ALL) {
+        return prev.map((it) =>
+          it.id === id ? { ...it, folder_id: folderId } : it
+        );
+      }
+      return prev.filter((it) => it.id !== id);
+    });
+    refreshFolderCounts();
+  };
+
+  const handleCreateFolder = async (name) => {
+    try {
+      const result = await createFolder(name);
+      if (result?.folder) {
+        setFolders((prev) =>
+          [...prev, result.folder].sort((a, b) => a.name.localeCompare(b.name))
+        );
+      }
+    } catch (err) {
+      setError(err?.response?.data?.error || "Couldn't create folder.");
+    }
+  };
+
+  const handleRenameFolder = async (id, name) => {
+    try {
+      await renameFolder(id, name);
+      setFolders((prev) =>
+        prev
+          .map((f) => (f.id === id ? { ...f, name } : f))
+          .sort((a, b) => a.name.localeCompare(b.name))
+      );
+    } catch (err) {
+      setError(err?.response?.data?.error || "Couldn't rename folder.");
+    }
+  };
+
+  const handleDeleteFolder = async (id) => {
+    try {
+      await deleteFolder(id);
+      setFolders((prev) => prev.filter((f) => f.id !== id));
+      if (selected === id) setSelected(ALL);
+      refreshFolderCounts();
+    } catch (err) {
+      setError(err?.response?.data?.error || "Couldn't delete folder.");
+    }
+  };
+
+  // Compute per-row revision labels.
   const revisionLabels = (() => {
     const byId = new Map(items.map((it) => [it.id, it]));
     const labels = new Map();
@@ -328,8 +777,13 @@ export default function History() {
     return labels;
   })();
 
+  const selectedFolderName =
+    typeof selected === "number"
+      ? folders.find((f) => f.id === selected)?.name
+      : null;
+
   return (
-    <div className="max-w-4xl mx-auto pb-16">
+    <div className="max-w-[1280px] mx-auto pb-16">
       <div className="mb-10 flex items-start justify-between gap-4">
         <div>
           <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground block mb-3">
@@ -339,8 +793,8 @@ export default function History() {
             Past dashboards
           </h1>
           <p className="text-muted-foreground max-w-xl">
-            Every spreadsheet you've turned into a brief — newest first. Click any row to
-            re-open it, or use the menu to rename or delete.
+            Every spreadsheet you've turned into a brief. Organise with folders on the
+            left, click any row to re-open it.
           </p>
         </div>
         <Link
@@ -361,54 +815,91 @@ export default function History() {
           <button
             type="button"
             onClick={() => setError(null)}
-            className="text-rose-700 hover:text-rose-900 text-xs uppercase font-mono tracking-widest"
+            className="text-rose-700 hover:text-rose-900"
+            aria-label="Dismiss"
           >
-            Dismiss
+            <XIcon className="w-4 h-4" />
           </button>
         </div>
       )}
 
-      {loading ? (
-        <div className="rounded-xl border border-border bg-card p-10 flex items-center justify-center gap-3 text-muted-foreground">
-          <Loader2 className="w-4 h-4 animate-spin" />
-          <span className="font-mono text-xs uppercase tracking-widest">Loading…</span>
-        </div>
-      ) : items.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-foreground/20 bg-card/40 p-10 lg:p-14 text-center">
-          <div className="inline-flex p-4 rounded-xl border border-border bg-background mb-6">
-            <HistoryIcon className="h-7 w-7" strokeWidth={1.5} />
-          </div>
-          <h2 className="font-display text-2xl lg:text-3xl tracking-tight mb-3">
-            No dashboards yet
-          </h2>
-          <p className="text-muted-foreground max-w-md mx-auto mb-8 leading-relaxed">
-            Upload your first spreadsheet and it'll show up here, along with every one
-            after.
-          </p>
-          <Link
-            to="/app"
-            className="inline-flex items-center gap-2 bg-foreground hover:bg-foreground/90 text-background px-6 h-11 rounded-full text-sm font-medium"
-          >
-            <Sparkles className="w-4 h-4" />
-            Upload your first file
-          </Link>
-        </div>
-      ) : (
-        <ul className="rounded-xl border border-border bg-card overflow-hidden divide-y divide-border">
-          {items.map((item) => (
-            <HistoryRow
-              key={item.id}
-              item={item}
-              revisionLabel={revisionLabels.get(item.id)}
-              onOpen={openDashboard}
-              onUpdate={updateDashboard}
-              onRenamed={handleRenamed}
-              onDeleted={handleDeleted}
-              onError={setError}
-            />
-          ))}
-        </ul>
-      )}
+      <div className="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] gap-8">
+        <FoldersRail
+          folders={folders}
+          unfiled={unfiledCount}
+          totalCount={totalCount}
+          selected={selected}
+          onSelect={setSelected}
+          onCreate={handleCreateFolder}
+          onRename={handleRenameFolder}
+          onDelete={handleDeleteFolder}
+        />
+
+        <section className="min-w-0">
+          {selected !== ALL && (
+            <p className="mb-3 text-xs font-mono uppercase tracking-widest text-muted-foreground">
+              {selected === UNFILED
+                ? `Unfiled · ${items.length} dashboard${
+                    items.length === 1 ? "" : "s"
+                  }`
+                : `${selectedFolderName ?? "Folder"} · ${items.length} dashboard${
+                    items.length === 1 ? "" : "s"
+                  }`}
+            </p>
+          )}
+
+          {loading ? (
+            <div className="rounded-xl border border-border bg-card p-10 flex items-center justify-center gap-3 text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span className="font-mono text-xs uppercase tracking-widest">
+                Loading…
+              </span>
+            </div>
+          ) : items.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-foreground/20 bg-card/40 p-10 lg:p-14 text-center">
+              <div className="inline-flex p-4 rounded-xl border border-border bg-background mb-6">
+                <HistoryIcon className="h-7 w-7" strokeWidth={1.5} />
+              </div>
+              <h2 className="font-display text-2xl lg:text-3xl tracking-tight mb-3">
+                {selected === ALL
+                  ? "No dashboards yet"
+                  : selected === UNFILED
+                  ? "Everything's filed"
+                  : "This folder is empty"}
+              </h2>
+              <p className="text-muted-foreground max-w-md mx-auto mb-8 leading-relaxed">
+                {selected === ALL
+                  ? "Upload your first spreadsheet and it'll show up here, along with every one after."
+                  : "Move dashboards into this folder using the row menu, or upload a new one."}
+              </p>
+              <Link
+                to="/app"
+                className="inline-flex items-center gap-2 bg-foreground hover:bg-foreground/90 text-background px-6 h-11 rounded-full text-sm font-medium"
+              >
+                <Sparkles className="w-4 h-4" />
+                New upload
+              </Link>
+            </div>
+          ) : (
+            <ul className="rounded-xl border border-border bg-card overflow-hidden divide-y divide-border">
+              {items.map((item) => (
+                <HistoryRow
+                  key={item.id}
+                  item={item}
+                  revisionLabel={revisionLabels.get(item.id)}
+                  folders={folders}
+                  onOpen={openDashboard}
+                  onUpdate={updateDashboard}
+                  onRenamed={handleRenamed}
+                  onDeleted={handleDeleted}
+                  onMoved={handleMoved}
+                  onError={setError}
+                />
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
