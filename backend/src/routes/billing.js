@@ -1,7 +1,17 @@
 const express = require('express');
 const { clerkClient } = require('@clerk/express');
-const { requireUser, getUserId, setUserSpendCap } = require('../middleware/auth');
-const { stripe, isStripeConfigured, getPriceId } = require('../services/stripe');
+const {
+  requireUser,
+  getUserId,
+  setUserSpendCap,
+  invalidatePlanCache,
+} = require('../middleware/auth');
+const {
+  stripe,
+  isStripeConfigured,
+  getPriceId,
+  planForPrice,
+} = require('../services/stripe');
 
 const router = express.Router();
 
@@ -51,6 +61,12 @@ router.post('/checkout', requireUser(), async (req, res) => {
       mode: 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
       allow_promotion_codes: true,
+      // client_reference_id is the belt-and-braces identifier we use in the
+      // webhook to resolve the Clerk user, even if the customer's metadata
+      // gets mangled. subscription_data.metadata is on the subscription
+      // itself, useful for the subscription.* events.
+      client_reference_id: userId,
+      subscription_data: { metadata: { clerkUserId: userId } },
       success_url: `${origin}/app?checkout=success`,
       cancel_url: `${origin}/pricing?checkout=cancelled`,
     });
@@ -85,6 +101,79 @@ router.post('/portal', requireUser(), async (req, res) => {
     res.json({ url: session.url });
   } catch (err) {
     console.error('Portal error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/billing/resync — force-pull the user's Stripe subscription state
+// and write it into Clerk. Useful when a webhook was missed, raced, or quietly
+// no-op'd. Always safe to call.
+router.post('/resync', requireUser(), async (req, res) => {
+  if (!isStripeConfigured) return notConfigured(res);
+
+  try {
+    const userId = getUserId(req);
+    const user = await clerkClient.users.getUser(userId);
+    const customerId = user.publicMetadata?.stripeCustomerId;
+    if (!customerId) {
+      return res.json({
+        ok: true,
+        plan: user.publicMetadata?.plan ?? 'starter',
+        message: 'No Stripe customer yet — nothing to sync.',
+      });
+    }
+
+    const subs = await stripe.subscriptions.list({
+      customer: customerId,
+      status: 'all',
+      limit: 5,
+    });
+
+    // Prefer an active/trialing/past_due subscription if one exists; otherwise
+    // pick the most recent. This handles the rare "two subs at once" case.
+    const sorted = [...subs.data].sort((a, b) => b.created - a.created);
+    const active = sorted.find((s) =>
+      ['active', 'trialing', 'past_due'].includes(s.status)
+    );
+    const sub = active || sorted[0];
+
+    if (!sub) {
+      await clerkClient.users.updateUserMetadata(userId, {
+        publicMetadata: { ...user.publicMetadata, plan: 'starter' },
+      });
+      invalidatePlanCache(userId);
+      return res.json({ ok: true, plan: 'starter', message: 'No subscriptions found.' });
+    }
+
+    const status = sub.status;
+    const priceId = sub.items?.data?.[0]?.price?.id;
+    const isInactive =
+      status === 'canceled' || status === 'incomplete_expired' || status === 'unpaid';
+    const planKey = isInactive ? 'starter' : planForPrice(priceId);
+
+    await clerkClient.users.updateUserMetadata(userId, {
+      publicMetadata: {
+        ...user.publicMetadata,
+        plan: planKey,
+        stripeSubscriptionId: sub.id,
+        stripeStatus: status,
+      },
+    });
+    invalidatePlanCache(userId);
+
+    console.log(
+      `[billing/resync] ${userId} → plan=${planKey} status=${status} priceId=${priceId} sub=${sub.id}`
+    );
+
+    res.json({
+      ok: true,
+      plan: planKey,
+      status,
+      priceMatched: planKey !== 'starter' || isInactive,
+      priceId,
+    });
+  } catch (err) {
+    console.error('Resync error:', err);
     res.status(500).json({ error: err.message });
   }
 });

@@ -13,9 +13,10 @@ import {
   Gauge,
   AlertCircle,
   Check,
+  RefreshCw,
 } from "lucide-react";
 import { useUser, useClerk } from "@clerk/clerk-react";
-import { getUsage, openBillingPortal, setSpendCap } from "../services/api";
+import { getUsage, openBillingPortal, setSpendCap, resyncBilling } from "../services/api";
 import { isClerkConfigured } from "../lib/auth";
 import ClerkAccountSection from "../components/Settings/ClerkAccountSection";
 
@@ -60,6 +61,8 @@ function Row({ label, value, action }) {
 export default function Settings() {
   const [usage, setUsage] = useState(null);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [resyncLoading, setResyncLoading] = useState(false);
+  const [resyncMsg, setResyncMsg] = useState(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -113,6 +116,35 @@ export default function Settings() {
           err?.message ||
           "Couldn't open the billing portal."
       );
+    }
+  };
+
+  const runResync = async () => {
+    try {
+      setResyncLoading(true);
+      setResyncMsg(null);
+      setError(null);
+      const result = await resyncBilling();
+      setResyncMsg(
+        result?.plan
+          ? `Synced — your plan is now "${result.plan}". Refreshing…`
+          : "Synced."
+      );
+      // Refresh usage so the UI reflects the new plan.
+      try {
+        const data = await getUsage();
+        setUsage(data);
+      } catch {
+        // ignore; the user can refresh manually
+      }
+    } catch (err) {
+      setError(
+        err?.response?.data?.error ||
+          err?.message ||
+          "Couldn't resync from Stripe."
+      );
+    } finally {
+      setResyncLoading(false);
     }
   };
 
@@ -211,7 +243,7 @@ export default function Settings() {
               <div>
                 <p className="text-sm font-medium">Manage subscription</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Change plan, update card, download invoices, or cancel — via Stripe.
+                  Change plan, update card, download invoices, or cancel via Stripe.
                 </p>
               </div>
               <button
@@ -229,6 +261,31 @@ export default function Settings() {
               </button>
             </div>
           )}
+
+          <div className="mt-5 pt-5 border-t border-border flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium">Plan out of sync?</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                If you just paid but your plan hasn't updated, pull the latest from Stripe.
+              </p>
+              {resyncMsg && (
+                <p className="text-xs text-emerald-700 mt-2">{resyncMsg}</p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={runResync}
+              disabled={resyncLoading}
+              className="inline-flex items-center gap-1.5 h-10 px-4 rounded-md border border-border text-sm hover:bg-accent transition-colors disabled:opacity-60"
+            >
+              {resyncLoading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="w-3.5 h-3.5" />
+              )}
+              Refresh from Stripe
+            </button>
+          </div>
         </Section>
 
         <Section icon={User} eyebrow="Profile" title="Who you are">

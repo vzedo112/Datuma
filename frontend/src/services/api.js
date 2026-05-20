@@ -96,6 +96,11 @@ export async function setSpendCap(amountCents) {
   return response.data; // { spendCapCents }
 }
 
+export async function resyncBilling() {
+  const response = await api.post("/api/billing/resync");
+  return response.data; // { plan, status, priceMatched, priceId }
+}
+
 export async function createShareLink(id) {
   const response = await api.post(`/api/dashboards/${id}/share`);
   return response.data; // { token }
