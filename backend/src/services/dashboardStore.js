@@ -12,10 +12,25 @@ async function saveDashboard({ userId, filename, rowCount, dashboard, parentId =
   return result.rows[0];
 }
 
-async function listDashboards(userId, { limit = 50 } = {}) {
+// folderId semantics:
+//   undefined → no filter (all dashboards)
+//   null      → only top-level (unfiled) dashboards
+//   number    → only dashboards in that folder
+async function listDashboards(userId, { limit = 50, folderId } = {}) {
   if (!db.isReady() || !userId) return [];
+
+  const params = [userId];
+  let where = `d.user_id = $1`;
+  if (folderId === null) {
+    where += ` AND d.folder_id IS NULL`;
+  } else if (folderId !== undefined) {
+    params.push(folderId);
+    where += ` AND d.folder_id = $${params.length}`;
+  }
+  params.push(limit);
+
   const result = await db.query(
-    `SELECT d.id, d.name, d.filename, d.row_count, d.created_at, d.parent_id,
+    `SELECT d.id, d.name, d.filename, d.row_count, d.created_at, d.parent_id, d.folder_id,
             d.dashboard->>'title' AS title,
             d.dashboard->>'domain' AS domain,
             p.name AS parent_name,
@@ -23,10 +38,10 @@ async function listDashboards(userId, { limit = 50 } = {}) {
             p.dashboard->>'title' AS parent_title
      FROM dashboards d
      LEFT JOIN dashboards p ON p.id = d.parent_id AND p.user_id = d.user_id
-     WHERE d.user_id = $1
+     WHERE ${where}
      ORDER BY d.created_at DESC
-     LIMIT $2`,
-    [userId, limit]
+     LIMIT $${params.length}`,
+    params
   );
   return result.rows;
 }
