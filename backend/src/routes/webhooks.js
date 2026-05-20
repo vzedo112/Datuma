@@ -47,6 +47,11 @@ async function syncSubscription(sub, { sessionForFallback = null } = {}) {
 
   const status = sub.status; // active | trialing | past_due | canceled | unpaid | incomplete | ...
   const priceId = sub.items?.data?.[0]?.price?.id;
+  // TODO(billing): past_due intentionally keeps the user on their paid plan so
+  // a transient card failure doesn't immediately lock them out. Cost is that a
+  // user with a permanently-broken card can still generate overage during the
+  // ~3 week Stripe retry window. Revisit if overage abuse becomes real (e.g.
+  // by blocking overage gen while past_due, but still allowing base quota).
   const isInactive =
     status === 'canceled' || status === 'incomplete_expired' || status === 'unpaid';
   const planKey = isInactive ? 'starter' : planForPrice(priceId);
