@@ -488,18 +488,43 @@ router.post('/', requireUser(), upload.single('file'), async (req, res) => {
       });
     }
     const used = await countThisMonth(userId);
-    if (
-      Number.isFinite(plan.monthlyIncluded) &&
-      used >= plan.monthlyIncluded &&
-      plan.overageEuros === null
-    ) {
+    const monthlyIncluded = Number.isFinite(plan.monthlyIncluded)
+      ? plan.monthlyIncluded
+      : null;
+    const overInclusive =
+      monthlyIncluded !== null && used >= monthlyIncluded;
+
+    // Hard cap (Starter): no paid overage available, refuse.
+    if (overInclusive && plan.overageCents === null) {
       return res.status(402).json({
-        error: `You've used all ${plan.monthlyIncluded} dashboards in your ${plan.name} plan this month.`,
+        error: `You've used all ${monthlyIncluded} dashboards in your ${plan.name} plan this month.`,
         code: 'QUOTA_EXCEEDED',
         used,
-        limit: plan.monthlyIncluded,
+        limit: monthlyIncluded,
         plan: plan.key,
       });
+    }
+
+    // Soft cap (Pro/Team): allowed past included, but respect the user's
+    // monthly spend cap configured in Settings.
+    if (overInclusive && plan.overageCents > 0) {
+      const spendCap = await getUserSpendCap(req);
+      const overageAfter = used - monthlyIncluded + 1;
+      const chargeAfterCents = overageAfter * plan.overageCents;
+      if (chargeAfterCents > spendCap) {
+        return res.status(402).json({
+          error:
+            spendCap === 0
+              ? `You've used all ${monthlyIncluded} dashboards included in your ${plan.name} plan. Raise your monthly spend cap in Settings to keep going at €${plan.overageEuros.toFixed(2)} each.`
+              : `Generating this dashboard would put you over your €${(spendCap / 100).toFixed(2)} monthly spend cap. Raise it in Settings to continue.`,
+          code: 'SPEND_CAP_HIT',
+          used,
+          limit: monthlyIncluded,
+          spendCapCents: spendCap,
+          overageCents: plan.overageCents,
+          plan: plan.key,
+        });
+      }
     }
 
     const schema = getSchema(rows);
@@ -556,12 +581,44 @@ router.post('/', requireUser(), upload.single('file'), async (req, res) => {
     const persistenceUnavailable =
       savedId === null && (saveError !== null || !db.isReady());
 
+    // Recount usage after the save so we can correctly flag overage.
+    const usedAfter = await countThisMonth(userId);
+    const wasOverage =
+      monthlyIncluded !== null && usedAfter > monthlyIncluded;
+    const overage = wasOverage
+      ? { isOverage: true, overageEuros: plan.overageEuros, used: usedAfter }
+      : null;
+
+    // Bill the overage immediately as a Stripe invoice item on the next
+    // renewal. Best-effort: if Stripe is unavailable we log and move on; the
+    // dashboard is already saved and the user shouldn't lose access over a
+    // billing hiccup that we can backfill.
+    if (wasOverage && plan.overageCents > 0 && savedId !== null) {
+      try {
+        const customerId = await getStripeCustomerId(userId);
+        if (customerId) {
+          await createOverageInvoiceItem({
+            customerId,
+            amountCents: plan.overageCents,
+            description: `Datuma — dashboard overage (${plan.name})`,
+          });
+        } else {
+          console.warn(
+            `[billing] no Stripe customer for ${userId}, skipping overage invoice item`
+          );
+        }
+      } catch (err) {
+        console.warn('[billing] failed to record overage invoice item:', err.message);
+      }
+    }
+
     res.json({
       id: savedId,
       filename: req.file.originalname,
       rowCount: rows.length,
       dashboard: dashboardWithData,
       userId,
+      overage,
       persistenceWarning: persistenceUnavailable
         ? "Your dashboard was generated but couldn't be saved — the database is unreachable right now. It won't appear in History if you reload."
         : null,
