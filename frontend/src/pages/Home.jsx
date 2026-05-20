@@ -97,6 +97,118 @@ const previewDashboard = {
 
 const verbs = ["briefed", "decoded", "explained", "answered"];
 
+function HeroFragments({ visible }) {
+  // A small sparkline SVG for the trend fragment.
+  const sparkPoints = "0,28 12,22 24,24 36,16 48,18 60,10 72,12 84,4";
+
+  return (
+    <div className="hidden lg:block absolute right-8 xl:right-16 top-1/2 -translate-y-1/2 w-[440px] h-[480px] pointer-events-none">
+      <style>{`
+        @keyframes float-a { 0%,100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-10px) rotate(-3deg); } }
+        @keyframes float-b { 0%,100% { transform: translateY(0) rotate(2.5deg); } 50% { transform: translateY(-7px) rotate(2.5deg); } }
+        @keyframes float-c { 0%,100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-12px) rotate(-1.5deg); } }
+        @keyframes float-d { 0%,100% { transform: translateY(0) rotate(3deg); } 50% { transform: translateY(-8px) rotate(3deg); } }
+        @keyframes draw-spark { from { stroke-dashoffset: 200; } to { stroke-dashoffset: 0; } }
+      `}</style>
+
+      {/* Metric chip — top left */}
+      <div
+        className={`absolute top-4 left-0 transition-all duration-700 delay-[400ms] ${
+          visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+        }`}
+        style={{ animation: visible ? "float-a 7s ease-in-out infinite" : "none" }}
+      >
+        <div className="rounded-xl border border-foreground/15 bg-background shadow-[0_12px_30px_-18px_rgba(20,17,13,0.35)] px-4 py-3 w-[200px]">
+          <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground mb-1">
+            Total revenue
+          </p>
+          <p className="font-display text-2xl tracking-tight leading-none">€4.82M</p>
+          <p className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-emerald-700">
+            <ArrowUpRight className="w-3 h-3" strokeWidth={2} />
+            up 8% vs Q2
+          </p>
+        </div>
+      </div>
+
+      {/* Q chip — top right */}
+      <div
+        className={`absolute top-2 right-0 transition-all duration-700 delay-[550ms] ${
+          visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+        }`}
+        style={{ animation: visible ? "float-b 8s ease-in-out infinite 0.4s" : "none" }}
+      >
+        <div className="rounded-xl border border-foreground/15 bg-background shadow-[0_12px_30px_-18px_rgba(20,17,13,0.35)] px-4 py-3 w-[220px]">
+          <p className="font-mono text-[9px] uppercase tracking-widest text-brand mb-1.5">
+            Q
+          </p>
+          <p className="text-[13px] leading-snug text-foreground">
+            Which categories drove margin this quarter?
+          </p>
+        </div>
+      </div>
+
+      {/* Sparkline card — middle */}
+      <div
+        className={`absolute top-[200px] left-12 transition-all duration-700 delay-[700ms] ${
+          visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+        }`}
+        style={{ animation: visible ? "float-c 9s ease-in-out infinite 0.8s" : "none" }}
+      >
+        <div className="rounded-xl border border-foreground/15 bg-background shadow-[0_12px_30px_-18px_rgba(20,17,13,0.35)] px-4 py-3 w-[230px]">
+          <div className="flex items-baseline justify-between mb-2">
+            <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+              Weekly revenue
+            </p>
+            <p className="text-[10px] font-mono text-emerald-700">+18%</p>
+          </div>
+          <svg viewBox="0 0 84 32" className="w-full h-8" preserveAspectRatio="none">
+            <polyline
+              points={sparkPoints}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-foreground"
+              style={{
+                strokeDasharray: 200,
+                animation: visible ? "draw-spark 1.6s ease-out 0.9s forwards" : "none",
+                strokeDashoffset: visible ? undefined : 200,
+              }}
+            />
+          </svg>
+        </div>
+      </div>
+
+      {/* Dataset pill — bottom right */}
+      <div
+        className={`absolute bottom-8 right-4 transition-all duration-700 delay-[850ms] ${
+          visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+        }`}
+        style={{ animation: visible ? "float-d 7.5s ease-in-out infinite 1.2s" : "none" }}
+      >
+        <div className="rounded-xl border border-foreground/15 bg-background shadow-[0_12px_30px_-18px_rgba(20,17,13,0.35)] px-4 py-3 w-[210px]">
+          <div className="flex items-center gap-2 mb-1.5">
+            <FileSpreadsheet className="w-3.5 h-3.5 text-foreground/70" strokeWidth={1.7} />
+            <span className="font-mono text-[10px] text-muted-foreground truncate">
+              q3_orders.csv
+            </span>
+          </div>
+          <p className="font-mono text-[10px] text-muted-foreground">
+            12,480 rows · 14 cols
+          </p>
+          <div className="mt-2 flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 text-[9px] font-mono uppercase tracking-widest">
+              clean
+            </span>
+            <span className="text-[10px] text-muted-foreground">no issues found</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Hero() {
   const [visible, setVisible] = useState(false);
   const [verbIdx, setVerbIdx] = useState(0);
@@ -111,6 +223,8 @@ function Hero() {
     <section className="relative min-h-screen flex flex-col justify-center overflow-hidden">
       <div className="absolute inset-0 grid-lines opacity-30 pointer-events-none" />
       <div className="absolute right-[-10%] top-1/2 -translate-y-1/2 w-[600px] h-[600px] lg:w-[820px] lg:h-[820px] rounded-full bg-gradient-to-br from-foreground/5 via-foreground/0 to-foreground/10 blur-3xl pointer-events-none" />
+
+      <HeroFragments visible={visible} />
 
       <div className="relative z-10 max-w-[1400px] mx-auto px-6 lg:px-12 py-32 lg:py-40 w-full">
         <div
