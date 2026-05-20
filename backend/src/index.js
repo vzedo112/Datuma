@@ -12,7 +12,28 @@ const db = require('./db');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+// Behind a load balancer (EB / Fly) we need to trust the proxy so Express
+// reads the real client IP from X-Forwarded-For and treats HTTPS correctly.
+app.set('trust proxy', 1);
+
+// CORS — only allow our own frontend(s). Comma-separated origins via env;
+// dev falls back to localhost:3000 so the React dev server works.
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin(origin, cb) {
+      // Allow same-origin / non-browser requests (no Origin header) and
+      // anything matching the explicit allowlist.
+      if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+      cb(new Error(`CORS: origin "${origin}" not allowed`));
+    },
+    credentials: true,
+  })
+);
 
 // Stripe webhook needs the RAW request body for signature verification, so it
 // must be mounted BEFORE express.json() with its own raw parser.

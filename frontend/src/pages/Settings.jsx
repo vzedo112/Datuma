@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import {
   CreditCard,
   User,
-  Bell,
   AlertOctagon,
   ArrowUpRight,
   LogOut,
@@ -55,28 +54,6 @@ function Row({ label, value, action }) {
       </div>
       {action}
     </div>
-  );
-}
-
-function Toggle({ label, description, defaultChecked = false }) {
-  return (
-    <label className="flex items-start justify-between gap-4 py-3 border-b border-border last:border-b-0 cursor-pointer">
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium">{label}</p>
-        {description && (
-          <p className="text-xs text-muted-foreground mt-1">{description}</p>
-        )}
-      </div>
-      <span className="relative inline-block w-10 h-6 shrink-0">
-        <input
-          type="checkbox"
-          defaultChecked={defaultChecked}
-          className="peer sr-only"
-        />
-        <span className="absolute inset-0 rounded-full bg-foreground/15 peer-checked:bg-foreground transition-colors" />
-        <span className="absolute top-0.5 left-0.5 w-5 h-5 bg-card rounded-full transition-transform peer-checked:translate-x-4" />
-      </span>
-    </label>
   );
 }
 
@@ -263,23 +240,6 @@ export default function Settings() {
               available yet.
             </p>
           )}
-        </Section>
-
-        <Section icon={Bell} eyebrow="Notifications" title="Email me when">
-          <Toggle
-            label="A dashboard finishes generating"
-            description="Useful for large files that take >30 seconds."
-            defaultChecked
-          />
-          <Toggle
-            label="My monthly usage hits 80%"
-            description="So you can upgrade before hitting the overage rate."
-            defaultChecked
-          />
-          <Toggle
-            label="Datuma ships a new feature"
-            description="Roughly once a month. We don't spam."
-          />
         </Section>
 
         <Section icon={Mail} eyebrow="Support" title="Need a hand?">

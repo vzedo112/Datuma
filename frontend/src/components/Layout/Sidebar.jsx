@@ -207,13 +207,13 @@ export default function Sidebar() {
                     Pro
                   </Link>
                 )}
-                <button
-                  type="button"
-                  title="Help"
+                <a
+                  href="mailto:hello@datuma.app"
+                  title="Help — email hello@datuma.app"
                   className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                 >
                   <HelpCircle className="h-4 w-4" />
-                </button>
+                </a>
               </div>
             ) : (
               <>
@@ -233,13 +233,13 @@ export default function Sidebar() {
                   )}
                 </div>
                 <div className="mt-3 space-y-1">
-                  <button
-                    type="button"
+                  <a
+                    href="mailto:hello@datuma.app"
                     className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                   >
                     <HelpCircle className="h-4 w-4" />
                     Help
-                  </button>
+                  </a>
                 </div>
               </>
             )}

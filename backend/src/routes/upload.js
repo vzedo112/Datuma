@@ -1,5 +1,6 @@
 const express = require('express');
 const multer = require('multer');
+const rateLimit = require('express-rate-limit');
 const { parseFile, getSchema } = require('../services/parser');
 const { getDatasetStats, getRepresentativeSample } = require('../services/stats');
 const { analyzeQuality } = require('../services/dataQuality');
@@ -30,6 +31,22 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 const HARD_FILE_CEILING = 20;
 
+// Rate-limit the expensive endpoints. Keyed by Clerk user id when available so
+// a single bad actor can't burn shared IP buckets; falls back to IP for
+// pre-auth callers. Anthropic credits are real money — this is the cheap
+// guardrail before we hit the Stripe / Anthropic spend.
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => getUserId(req) || req.ip,
+  message: {
+    error: 'Too many requests, please slow down for a moment.',
+    code: 'RATE_LIMITED',
+  },
+});
+
 function dedupeDatasetNames(datasets) {
   const counts = new Map();
   return datasets.map((ds) => {
@@ -56,6 +73,7 @@ function parseDatasetNames(body) {
 router.post(
   '/analyze',
   requireUser(),
+  uploadLimiter,
   upload.array('files', HARD_FILE_CEILING),
   async (req, res) => {
     try {
@@ -214,7 +232,7 @@ router.post(
   }
 );
 
-router.post('/generate', requireUser(), express.json(), async (req, res) => {
+router.post('/generate', requireUser(), uploadLimiter, express.json(), async (req, res) => {
   try {
     const userId = getUserId(req);
     const { uploadId, datasetNames } = req.body || {};

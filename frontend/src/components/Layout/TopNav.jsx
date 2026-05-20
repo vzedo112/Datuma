@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Bell, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { UserButton } from "@clerk/clerk-react";
 import { isClerkConfigured } from "../../lib/auth";
 import { clerkAppearance } from "../../lib/clerkAppearance";
@@ -21,18 +21,14 @@ export default function TopNav() {
         <Link to="/app" className="text-muted-foreground hover:text-foreground transition-colors">
           datuma
         </Link>
+        <span className="ml-2 px-1.5 py-0.5 rounded font-mono uppercase tracking-widest bg-foreground/8 text-foreground/70 border border-foreground/10 text-[10px]">
+          Beta
+        </span>
         <ChevronRight className="h-4 w-4 text-muted-foreground mx-1" />
         <span className="text-foreground">{label}</span>
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3 ml-auto">
-        <button
-          type="button"
-          className="p-2 hover:bg-accent rounded-full transition-colors"
-          aria-label="Notifications"
-        >
-          <Bell className="h-4 w-4 text-muted-foreground" />
-        </button>
         {isClerkConfigured ? (
           <UserButton
             afterSignOutUrl="/"
