@@ -117,4 +117,63 @@ export async function getSharedDashboard(token) {
   return response.data;
 }
 
+// --- Folders ---
+
+export async function listFolders() {
+  const response = await api.get("/api/folders");
+  return response.data; // { items, unfiled }
+}
+
+export async function createFolder(name) {
+  const response = await api.post("/api/folders", { name });
+  return response.data; // { folder }
+}
+
+export async function renameFolder(id, name) {
+  const response = await api.patch(`/api/folders/${id}`, { name });
+  return response.data;
+}
+
+export async function deleteFolder(id) {
+  const response = await api.delete(`/api/folders/${id}`);
+  return response.data;
+}
+
+export async function moveDashboardToFolder(dashboardId, folderId) {
+  const response = await api.patch("/api/folders/move", {
+    dashboardId,
+    folderId,
+  });
+  return response.data;
+}
+
+export async function listDashboardsInFolder(folderId) {
+  // folderId === null  → top-level only
+  // folderId === undefined → all
+  const params = {};
+  if (folderId === null) params.folder = "none";
+  else if (folderId !== undefined) params.folder = folderId;
+  const response = await api.get("/api/dashboards", { params });
+  return response.data.items ?? [];
+}
+
+// --- Chat (Pro/Team/Enterprise) ---
+
+export async function listChatMessages(dashboardId) {
+  const response = await api.get(`/api/dashboards/${dashboardId}/chat`);
+  return response.data; // { messages, allowed, planKey }
+}
+
+export async function sendChatMessage(dashboardId, message) {
+  const response = await api.post(`/api/dashboards/${dashboardId}/chat`, {
+    message,
+  });
+  return response.data; // { userMessage, assistantMessage }
+}
+
+export async function clearChatThread(dashboardId) {
+  const response = await api.delete(`/api/dashboards/${dashboardId}/chat`);
+  return response.data;
+}
+
 export default api;
