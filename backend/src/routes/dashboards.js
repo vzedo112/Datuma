@@ -15,13 +15,34 @@ const {
   renameDashboard,
   deleteDashboard,
 } = require('../services/dashboardStore');
+const {
+  listMessages,
+  appendMessage,
+  clearThread,
+  countUserMessagesThisMonth,
+} = require('../services/chatStore');
+const { reply: chatReply } = require('../services/chat');
+const {
+  createOverageInvoiceItem,
+  isStripeConfigured,
+} = require('../services/stripe');
+const { getStripeCustomerId } = require('../middleware/auth');
+
+const CHAT_PLANS = new Set(['pro', 'team', 'enterprise']);
 
 const router = express.Router();
 
 router.get('/', requireUser(), async (req, res) => {
   try {
     const userId = getUserId(req);
-    const items = await listDashboards(userId);
+    // ?folder=123 → that folder; ?folder=none → top-level only; absent → all
+    let folderId;
+    if (req.query.folder === 'none') folderId = null;
+    else if (req.query.folder !== undefined) {
+      const n = Number(req.query.folder);
+      if (Number.isInteger(n)) folderId = n;
+    }
+    const items = await listDashboards(userId, { folderId });
     res.json({ items });
   } catch (err) {
     console.error('List dashboards error:', err);
@@ -150,6 +171,180 @@ router.delete('/:id/share', requireUser(), async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('Revoke share token error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Chat (Pro / Team / Enterprise only) ---
+
+router.get('/:id/chat', requireUser(), async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ error: 'Invalid dashboard id' });
+    }
+
+    const planKey = await getUserPlan(req);
+    const plan = getPlan(planKey);
+    const [messages, used] = await Promise.all([
+      listMessages(id, userId),
+      countUserMessagesThisMonth(userId),
+    ]);
+    res.json({
+      messages,
+      allowed: CHAT_PLANS.has(planKey),
+      planKey,
+      usage: {
+        used,
+        included: Number.isFinite(plan.chatIncluded) ? plan.chatIncluded : null,
+        overageCents: plan.chatOverageCents ?? null,
+      },
+    });
+  } catch (err) {
+    console.error('List chat error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/:id/chat', requireUser(), async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ error: 'Invalid dashboard id' });
+    }
+
+    const planKey = await getUserPlan(req);
+    if (!CHAT_PLANS.has(planKey)) {
+      return res.status(402).json({
+        error: "Ask Datuma is a Pro feature — upgrade to chat with your dashboards.",
+        code: 'CHAT_REQUIRES_UPGRADE',
+        currentPlan: planKey,
+      });
+    }
+
+    const { message } = req.body || {};
+    if (!message || typeof message !== 'string' || !message.trim()) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+    const trimmed = message.trim().slice(0, 2000);
+
+    const row = await getDashboard(id, userId);
+    if (!row) return res.status(404).json({ error: 'Dashboard not found' });
+
+    // Quota gate. Pro has 200 included, Team 1000, Enterprise unlimited.
+    // Pro/Team pay overage per message past the include; Enterprise free.
+    const plan = getPlan(planKey);
+    const usedBefore = await countUserMessagesThisMonth(userId);
+    const includedFinite = Number.isFinite(plan.chatIncluded);
+    const overInclude = includedFinite && usedBefore >= plan.chatIncluded;
+    const overageCents = plan.chatOverageCents ?? 0;
+
+    // If over the include and the plan has no paid overage path (shouldn't
+    // happen for Pro/Team but guard anyway), block.
+    if (overInclude && (plan.chatOverageCents === null || overageCents <= 0)) {
+      return res.status(402).json({
+        error: `You've used all ${plan.chatIncluded} chat messages included in your ${plan.name} plan this month.`,
+        code: 'CHAT_QUOTA_EXCEEDED',
+        used: usedBefore,
+        limit: plan.chatIncluded,
+        plan: plan.key,
+      });
+    }
+
+    // Spend-cap check — overage chat messages count against the same monthly
+    // spend cap as dashboard overage. If charging this one would push the user
+    // past their cap, refuse.
+    if (overInclude && overageCents > 0) {
+      const spendCap = await getUserSpendCap(req);
+      const overageAfter = usedBefore - plan.chatIncluded + 1;
+      const chargeAfterCents = overageAfter * overageCents;
+      if (chargeAfterCents > spendCap) {
+        return res.status(402).json({
+          error:
+            spendCap === 0
+              ? `You've used all ${plan.chatIncluded} chat messages included in your ${plan.name} plan. Raise your monthly spend cap in Settings to keep chatting at €${(overageCents / 100).toFixed(2)} each.`
+              : `Sending this chat message would put you over your €${(spendCap / 100).toFixed(2)} monthly spend cap.`,
+          code: 'SPEND_CAP_HIT',
+          used: usedBefore,
+          limit: plan.chatIncluded,
+          spendCapCents: spendCap,
+          overageCents,
+          plan: plan.key,
+        });
+      }
+    }
+
+    // Load existing thread first so the user message + reply share the same
+    // history snapshot Claude sees.
+    const existing = await listMessages(id, userId);
+
+    const userMsg = await appendMessage({
+      dashboardId: id,
+      userId,
+      role: 'user',
+      content: trimmed,
+    });
+
+    const { text } = await chatReply({
+      dashboard: row.dashboard,
+      thread: existing,
+      userMessage: trimmed,
+    });
+
+    const finalText = text || "I couldn't generate a reply for that — try rewording the question.";
+
+    const assistantMsg = await appendMessage({
+      dashboardId: id,
+      userId,
+      role: 'assistant',
+      content: finalText,
+    });
+
+    // Bill chat overage if this message landed past the included quota. Same
+    // best-effort pattern as dashboard overage — failure here just logs.
+    if (overInclude && overageCents > 0 && isStripeConfigured) {
+      try {
+        const customerId = await getStripeCustomerId(userId);
+        if (customerId) {
+          await createOverageInvoiceItem({
+            customerId,
+            amountCents: overageCents,
+            description: `Datuma — chat message overage (${plan.name})`,
+          });
+        }
+      } catch (err) {
+        console.warn('[billing] failed to record chat overage:', err.message);
+      }
+    }
+
+    res.json({
+      userMessage: userMsg,
+      assistantMessage: assistantMsg,
+      usage: {
+        used: usedBefore + 1,
+        included: includedFinite ? plan.chatIncluded : null,
+        overage: overInclude ? { isOverage: true, overageCents } : null,
+      },
+    });
+  } catch (err) {
+    console.error('Chat error:', err);
+    res.status(500).json({ error: err.message || 'Chat failed' });
+  }
+});
+
+router.delete('/:id/chat', requireUser(), async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ error: 'Invalid dashboard id' });
+    }
+    await clearThread(id, userId);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Clear chat error:', err);
     res.status(500).json({ error: err.message });
   }
 });
