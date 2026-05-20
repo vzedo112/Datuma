@@ -13,7 +13,9 @@ async function listFolders(userId) {
             COUNT(d.id)::int AS dashboard_count
      FROM folders f
      LEFT JOIN dashboards d
-       ON d.folder_id = f.id AND d.user_id = f.user_id
+       ON d.folder_id = f.id
+      AND d.user_id = f.user_id
+      AND d.deleted_at IS NULL
      WHERE f.user_id = $1
      GROUP BY f.id
      ORDER BY f.name ASC`,
@@ -27,7 +29,7 @@ async function countUnfiled(userId) {
   const r = await db.query(
     `SELECT COUNT(*)::int AS n
      FROM dashboards
-     WHERE user_id = $1 AND folder_id IS NULL`,
+     WHERE user_id = $1 AND folder_id IS NULL AND deleted_at IS NULL`,
     [userId]
   );
   return r.rows[0]?.n ?? 0;

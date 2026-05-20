@@ -20,7 +20,7 @@ async function listDashboards(userId, { limit = 50, folderId } = {}) {
   if (!db.isReady() || !userId) return [];
 
   const params = [userId];
-  let where = `d.user_id = $1`;
+  let where = `d.user_id = $1 AND d.deleted_at IS NULL`;
   if (folderId === null) {
     where += ` AND d.folder_id IS NULL`;
   } else if (folderId !== undefined) {
@@ -61,9 +61,12 @@ async function renameDashboard(id, userId, name) {
 
 async function deleteDashboard(id, userId) {
   if (!db.isReady() || !userId) return false;
+  // Soft-delete so the row still counts toward the user's monthly quota.
+  // Reads filter on deleted_at IS NULL everywhere.
   const result = await db.query(
-    `DELETE FROM dashboards
-     WHERE id = $1 AND user_id = $2
+    `UPDATE dashboards
+     SET deleted_at = NOW(), share_token = NULL
+     WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
      RETURNING id`,
     [id, userId]
   );
@@ -75,7 +78,7 @@ async function getDashboard(id, userId) {
   const result = await db.query(
     `SELECT id, name, filename, row_count, dashboard, created_at, share_token, parent_id
      FROM dashboards
-     WHERE id = $1 AND user_id = $2`,
+     WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL`,
     [id, userId]
   );
   return result.rows[0] ?? null;
@@ -121,6 +124,7 @@ async function listRecentWithContext(userId, { limit = 5 } = {}) {
             dashboard AS dashboard
      FROM dashboards
      WHERE user_id = $1
+       AND deleted_at IS NULL
        AND dashboard ? 'analysisContext'
      ORDER BY created_at DESC
      LIMIT $2`,
@@ -134,7 +138,7 @@ async function getDashboardByToken(token) {
   const result = await db.query(
     `SELECT id, filename, row_count, dashboard, created_at
      FROM dashboards
-     WHERE share_token = $1`,
+     WHERE share_token = $1 AND deleted_at IS NULL`,
     [token]
   );
   return result.rows[0] ?? null;
