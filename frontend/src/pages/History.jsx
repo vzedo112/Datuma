@@ -503,7 +503,7 @@ function HistoryRow({
     : null;
 
   return (
-    <li>
+    <li className="first:rounded-t-xl last:rounded-b-xl overflow-visible">
       <div
         className={`group w-full text-left px-5 py-4 flex items-center gap-4 transition-colors ${
           confirmingDelete ? "bg-rose-50/50" : "hover:bg-accent/50"
@@ -881,7 +881,7 @@ export default function History() {
               </Link>
             </div>
           ) : (
-            <ul className="rounded-xl border border-border bg-card overflow-hidden divide-y divide-border">
+            <ul className="rounded-xl border border-border bg-card divide-y divide-border">
               {items.map((item) => (
                 <HistoryRow
                   key={item.id}
