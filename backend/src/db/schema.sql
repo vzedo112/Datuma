@@ -51,3 +51,9 @@ ALTER TABLE dashboards
   ADD COLUMN IF NOT EXISTS folder_id INTEGER
   REFERENCES folders(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS dashboards_folder_idx ON dashboards (folder_id);
+
+-- Soft-delete: keep the row so quota usage doesn't drop when the user deletes
+-- a dashboard, but hide it from all read paths. NULL = not deleted.
+ALTER TABLE dashboards ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+CREATE INDEX IF NOT EXISTS dashboards_user_deleted_idx
+  ON dashboards (user_id) WHERE deleted_at IS NULL;
