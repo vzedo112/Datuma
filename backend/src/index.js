@@ -1,4 +1,6 @@
 require('dotenv').config();
+// Sentry must be initialised before other requires for proper auto-instrumentation.
+const { Sentry, enabled: sentryEnabled } = require('./sentry');
 const express = require('express');
 const cors = require('cors');
 const uploadRoutes = require('./routes/upload');
@@ -53,6 +55,11 @@ app.use('/api/dashboards', dashboardRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/share', shareRoutes);
 app.use('/api/folders', folderRoutes);
+
+// Sentry error handler must be last middleware before any user-facing handler.
+if (sentryEnabled) {
+  Sentry.setupExpressErrorHandler(app);
+}
 
 db.init().finally(() => {
   app.listen(PORT, () => {

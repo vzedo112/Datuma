@@ -9,10 +9,10 @@ import {
   Settings,
   HelpCircle,
   Menu,
-  Database,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
+import Wordmark from "../Brand/Wordmark";
 import { cn } from "../../lib/cn";
 
 const COLLAPSED_KEY = "datuma-sidebar-collapsed";
@@ -117,11 +117,7 @@ export default function Sidebar() {
           >
             {!collapsed && (
               <Link to="/" className="flex items-center gap-2 min-w-0">
-                <Database className="h-5 w-5 text-foreground shrink-0" />
-                <span className="text-xl font-display tracking-tight truncate">
-                  Datuma
-                </span>
-                <span className="text-[10px] text-brand font-mono mt-1">™</span>
+                <Wordmark className="text-foreground h-5 w-auto shrink-0" />
               </Link>
             )}
             <button

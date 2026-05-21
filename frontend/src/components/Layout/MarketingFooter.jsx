@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import Wordmark from "../Brand/Wordmark";
 
 const footerLinks = {
   Product: [
@@ -42,8 +43,7 @@ export default function MarketingFooter() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-10 lg:gap-8">
             <div className="col-span-2">
               <Link to="/" className="inline-flex items-center gap-2 mb-6">
-                <span className="text-2xl font-display">Datuma</span>
-                <span className="text-xs text-brand font-mono">™</span>
+                <Wordmark className="text-foreground h-7 w-auto" />
               </Link>
               <p className="text-muted-foreground leading-relaxed mb-6 max-w-xs">
                 Drop a spreadsheet, get a business-ready dashboard in 30

@@ -4,6 +4,7 @@ import { Menu, X, ArrowUpRight } from "lucide-react";
 import { SignedIn, SignedOut } from "@clerk/clerk-react";
 import { cn } from "../../lib/cn";
 import { isClerkConfigured } from "../../lib/auth";
+import Wordmark from "../Brand/Wordmark";
 
 const links = [
   { name: "Product", href: "/#product" },
@@ -116,12 +117,12 @@ export default function MarketingNav() {
           )}
         >
           <Link to="/" className="flex items-center gap-2 group">
-            <span className={cn("font-display tracking-tight transition-all", scrolled ? "text-xl" : "text-2xl")}>
-              Datuma
-            </span>
-            <span className={cn("text-brand font-mono transition-all", scrolled ? "text-[10px] mt-0.5" : "text-xs mt-1")}>
-              ™
-            </span>
+            <Wordmark
+              className={cn(
+                "text-foreground transition-all w-auto",
+                scrolled ? "h-5" : "h-6"
+              )}
+            />
             <span
               className={cn(
                 "ml-1 px-1.5 py-0.5 rounded font-mono uppercase tracking-widest bg-foreground/8 text-foreground/70 border border-foreground/10 transition-all",
