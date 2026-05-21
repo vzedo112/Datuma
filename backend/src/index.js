@@ -7,6 +7,7 @@ const uploadRoutes = require('./routes/upload');
 const dashboardRoutes = require('./routes/dashboards');
 const billingRoutes = require('./routes/billing');
 const webhookRoutes = require('./routes/webhooks');
+const clerkWebhookRoutes = require('./routes/clerkWebhooks');
 const shareRoutes = require('./routes/share');
 const folderRoutes = require('./routes/folders');
 const { withClerk } = require('./middleware/auth');
@@ -38,10 +39,11 @@ app.use(
   })
 );
 
-// Stripe webhook needs the RAW request body for signature verification, so it
-// must be mounted BEFORE express.json() with its own raw parser.
+// Stripe + Clerk webhooks both need the RAW request body for signature
+// verification, so they must be mounted BEFORE express.json() with raw parser.
 app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }));
 app.use('/api/webhooks', webhookRoutes);
+app.use('/api/webhooks/clerk', express.raw({ type: 'application/json' }), clerkWebhookRoutes);
 
 app.use(express.json());
 app.use(withClerk());

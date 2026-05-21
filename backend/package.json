@@ -23,8 +23,10 @@
     "multer": "^2.1.1",
     "papaparse": "^5.5.3",
     "pg": "^8.20.0",
+    "resend": "^6.12.3",
     "simple-statistics": "^7.8.9",
     "stripe": "^22.1.1",
+    "svix": "^1.94.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
