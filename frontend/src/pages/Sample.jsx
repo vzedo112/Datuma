@@ -6,6 +6,50 @@ import MarketingNav from "../components/Layout/MarketingNav";
 // Hardcoded sample dashboard. This renders without any API/auth so cold
 // prospects from outreach can see real output in 5 seconds without signing up.
 // Update the JSON below to swap the sample.
+
+// Minimal but realistic rows so the drill-down UX is demoable on /sample.
+// Columns chosen to match what the charts/metrics reference.
+const SAMPLE_SCHEMA = [
+  { name: "order_id", type: "numeric" },
+  { name: "order_date", type: "date" },
+  { name: "channel", type: "category" },
+  { name: "category", type: "category" },
+  { name: "region", type: "category" },
+  { name: "quantity", type: "numeric" },
+  { name: "order_total", type: "numeric" },
+];
+
+const Q3_ROWS = [
+  { order_id: 10001, order_date: "2025-07-02", channel: "Web direct", category: "Electronics", region: "Singapore", quantity: 1, order_total: 189 },
+  { order_id: 10002, order_date: "2025-07-02", channel: "Marketplace", category: "Apparel", region: "Sydney", quantity: 2, order_total: 122.4 },
+  { order_id: 10003, order_date: "2025-07-03", channel: "Retail partner", category: "Home", region: "Tokyo", quantity: 1, order_total: 142 },
+  { order_id: 10004, order_date: "2025-07-04", channel: "Web direct", category: "Beauty", region: "Hong Kong", quantity: 3, order_total: 126 },
+  { order_id: 10005, order_date: "2025-07-05", channel: "Marketplace", category: "Electronics", region: "Sydney", quantity: 1, order_total: 279.65 },
+  { order_id: 10006, order_date: "2025-07-07", channel: "Web direct", category: "Sports", region: "Singapore", quantity: 1, order_total: 55 },
+  { order_id: 10007, order_date: "2025-07-08", channel: "B2B", category: "Electronics", region: "Melbourne", quantity: 12, order_total: 854.4 },
+  { order_id: 10008, order_date: "2025-07-09", channel: "Marketplace", category: "Apparel", region: "Tokyo", quantity: 1, order_total: 148 },
+  { order_id: 10009, order_date: "2025-07-10", channel: "Web direct", category: "Toys", region: "Singapore", quantity: 2, order_total: 76 },
+  { order_id: 10013, order_date: "2025-07-15", channel: "Web direct", category: "Apparel", region: "Melbourne", quantity: 1, order_total: 274.55 },
+  { order_id: 10020, order_date: "2025-07-26", channel: "Marketplace", category: "Electronics", region: "Melbourne", quantity: 1, order_total: 404.1 },
+  { order_id: 10024, order_date: "2025-08-01", channel: "B2B", category: "Electronics", region: "Sydney", quantity: 5, order_total: 1156 },
+  { order_id: 10026, order_date: "2025-08-04", channel: "Retail partner", category: "Home", region: "Hong Kong", quantity: 1, order_total: 178 },
+  { order_id: 10031, order_date: "2025-08-12", channel: "Marketplace", category: "Apparel", region: "Hong Kong", quantity: 2, order_total: 98.6 },
+  { order_id: 10032, order_date: "2025-08-13", channel: "B2B", category: "Electronics", region: "Tokyo", quantity: 10, order_total: 632 },
+  { order_id: 10036, order_date: "2025-08-19", channel: "Marketplace", category: "Electronics", region: "Hong Kong", quantity: 1, order_total: 197.1 },
+  { order_id: 10040, order_date: "2025-08-27", channel: "B2B", category: "Home", region: "Melbourne", quantity: 4, order_total: 982.6 },
+  { order_id: 10042, order_date: "2025-08-30", channel: "Retail partner", category: "Apparel", region: "Tokyo", quantity: 1, order_total: 318 },
+  { order_id: 10045, order_date: "2025-09-04", channel: "Web direct", category: "Electronics", region: "Melbourne", quantity: 1, order_total: 179 },
+  { order_id: 10048, order_date: "2025-09-10", channel: "B2B", category: "Electronics", region: "Singapore", quantity: 3, order_total: 737.55 },
+];
+
+const Q2_ROWS = [
+  { order_id: 9501, order_date: "2025-04-03", channel: "Web direct", category: "Electronics", region: "Singapore", quantity: 1, order_total: 178 },
+  { order_id: 9502, order_date: "2025-04-09", channel: "Marketplace", category: "Apparel", region: "Sydney", quantity: 1, order_total: 88 },
+  { order_id: 9510, order_date: "2025-04-22", channel: "B2B", category: "Electronics", region: "Melbourne", quantity: 8, order_total: 712 },
+  { order_id: 9515, order_date: "2025-05-02", channel: "Web direct", category: "Beauty", region: "Hong Kong", quantity: 2, order_total: 84 },
+  { order_id: 9520, order_date: "2025-05-14", channel: "Retail partner", category: "Home", region: "Tokyo", quantity: 1, order_total: 165 },
+];
+
 const sampleDashboard = {
   title: "Q3 retail — revenue, margin & channel mix",
   primaryQuestion:
@@ -63,6 +107,8 @@ const sampleDashboard = {
       title: "Revenue by product category",
       aggregation: "sum",
       bucket: "none",
+      xAxis: "category",
+      yAxis: "order_total",
       explanation:
         "Electronics + Apparel = 58% of Q3 revenue. The long tail under-indexes vs Q2 by ~6%.",
       datasetName: "Q3 orders",
@@ -104,6 +150,8 @@ const sampleDashboard = {
       title: "Revenue share by channel",
       aggregation: "sum",
       bucket: "none",
+      xAxis: "channel",
+      yAxis: "order_total",
       explanation:
         "Web direct surpassed marketplace for the first time — keep paid-search weighted there.",
       datasetName: "Q3 orders",
@@ -119,6 +167,8 @@ const sampleDashboard = {
       title: "Gross margin by category (Q3)",
       aggregation: "avg",
       bucket: "none",
+      xAxis: "category",
+      yAxis: "order_total",
       explanation:
         "Beauty and Home held margin. Electronics and Apparel dropped 3+ pp — promo-heavy quarter.",
       datasetName: "Q3 orders",
@@ -132,6 +182,26 @@ const sampleDashboard = {
       ],
     },
   ],
+  // Source rows for drill-down. Real production dashboards carry these
+  // via analysisContext too — they're the data Datuma actually saw.
+  analysisContext: {
+    datasets: [
+      {
+        name: "Q3 orders",
+        filename: "q3_orders_apac.csv",
+        rowCount: Q3_ROWS.length,
+        schema: SAMPLE_SCHEMA,
+        rows: Q3_ROWS,
+      },
+      {
+        name: "Q2 orders",
+        filename: "q2_orders_apac.csv",
+        rowCount: Q2_ROWS.length,
+        schema: SAMPLE_SCHEMA,
+        rows: Q2_ROWS,
+      },
+    ],
+  },
   insights: [
     {
       title: "Margin compression is concentrated in two categories",

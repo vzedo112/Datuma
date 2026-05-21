@@ -1,7 +1,9 @@
+import { useMemo, useState } from "react";
 import { FileSpreadsheet, Layers } from "lucide-react";
 import MetricCard from "./MetricCard";
 import ChartPanel from "./ChartPanel";
 import InsightPanel from "./InsightPanel";
+import DrillDownModal from "./DrillDownModal";
 
 function formatDatasetTag(name, multi) {
   if (!multi) return null;
@@ -11,14 +13,60 @@ function formatDatasetTag(name, multi) {
   return name;
 }
 
+// Drill-down only works when the dashboard carries source rows
+// (analysisContext.datasets[].rows). Public share strips this for privacy,
+// so the click handlers should no-op there.
+function buildRowsIndex(dashboard) {
+  const ctx = dashboard?.analysisContext?.datasets;
+  if (!Array.isArray(ctx)) return null;
+  const map = {};
+  for (const d of ctx) {
+    if (Array.isArray(d.rows) && d.rows.length > 0) {
+      map[d.name] = {
+        rows: d.rows,
+        columns: (d.schema ?? []).map((c) => c.name),
+      };
+    }
+  }
+  return Object.keys(map).length > 0 ? map : null;
+}
+
 export default function DashboardView({ dashboard, filename, rowCount, header, actions, viewRef }) {
   const datasets = dashboard?.datasets ?? [];
   const multi = datasets.length > 1;
+
+  const rowsIndex = useMemo(() => buildRowsIndex(dashboard), [dashboard]);
+  const [drill, setDrill] = useState(null); // { datasetName, filter, title }
 
   const taggedInsights = (dashboard.insights ?? []).map((ins) => ({
     ...ins,
     datasetTag: formatDatasetTag(ins.datasetName, multi),
   }));
+
+  // Resolve which dataset a metric/chart belongs to. Falls back to the only
+  // available dataset for single-file dashboards where datasetName may be unset.
+  const resolveDataset = (datasetName) => {
+    if (!rowsIndex) return null;
+    if (datasetName && rowsIndex[datasetName]) return datasetName;
+    const keys = Object.keys(rowsIndex);
+    return keys.length === 1 ? keys[0] : null;
+  };
+
+  const openMetricDrill = (metric) => {
+    const ds = resolveDataset(metric.datasetName);
+    if (!ds) return;
+    setDrill({ datasetName: ds, filter: null, title: metric.label });
+  };
+
+  const openChartDrill = (chart, point) => {
+    const ds = resolveDataset(chart.datasetName);
+    if (!ds || !chart.xAxis) return;
+    setDrill({
+      datasetName: ds,
+      filter: { column: chart.xAxis, value: point.x },
+      title: `${chart.title} — ${point.x}`,
+    });
+  };
 
   return (
     <div ref={viewRef} className="max-w-[1400px] mx-auto pb-16">
@@ -106,6 +154,11 @@ export default function DashboardView({ dashboard, filename, rowCount, header, a
                 key={i}
                 {...m}
                 datasetTag={formatDatasetTag(m.datasetName, multi)}
+                onDrillDown={
+                  rowsIndex && resolveDataset(m.datasetName)
+                    ? () => openMetricDrill(m)
+                    : undefined
+                }
               />
             ))}
           </div>
@@ -121,6 +174,11 @@ export default function DashboardView({ dashboard, filename, rowCount, header, a
                 chart={c}
                 primary={i === 0}
                 datasetTag={formatDatasetTag(c.datasetName, multi)}
+                onPointClick={
+                  rowsIndex && resolveDataset(c.datasetName)
+                    ? (point) => openChartDrill(c, point)
+                    : undefined
+                }
               />
             ))}
           </div>
@@ -131,6 +189,18 @@ export default function DashboardView({ dashboard, filename, rowCount, header, a
         <section>
           <InsightPanel insights={taggedInsights} />
         </section>
+      )}
+
+      {drill && rowsIndex?.[drill.datasetName] && (
+        <DrillDownModal
+          open={Boolean(drill)}
+          onClose={() => setDrill(null)}
+          datasetName={drill.datasetName}
+          rows={rowsIndex[drill.datasetName].rows}
+          columns={rowsIndex[drill.datasetName].columns}
+          filter={drill.filter}
+          title={drill.title}
+        />
       )}
     </div>
   );

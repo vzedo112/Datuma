@@ -114,10 +114,17 @@ function truncate(s, n = 14) {
   return str.length > n ? str.slice(0, n - 1) + "…" : str;
 }
 
-function renderChart(chart) {
+function renderChart(chart, onPointClick) {
   const data = chart.data ?? [];
   if (data.length === 0) return <Empty />;
   const angle = shouldAngleLabels(data);
+  // Recharts Bar/Pie onClick receives the data point object directly — we
+  // just need the `x` value to drive the drill-down filter.
+  const handlePoint = onPointClick
+    ? (d) => {
+        if (d && d.x !== undefined) onPointClick({ x: d.x });
+      }
+    : undefined;
 
   if (chart.type === "line") {
     return (
@@ -165,7 +172,12 @@ function renderChart(chart) {
           />
           <YAxis tickFormatter={compact} tickLine={false} axisLine={false} width={56} />
           <Tooltip content={<TooltipBody />} cursor={{ fill: "rgba(20,17,13,0.06)" }} />
-          <Bar dataKey="y" radius={[4, 4, 0, 0]}>
+          <Bar
+            dataKey="y"
+            radius={[4, 4, 0, 0]}
+            onClick={handlePoint}
+            style={handlePoint ? { cursor: "pointer" } : undefined}
+          >
             {data.map((_, i) => (
               <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
             ))}
@@ -190,6 +202,8 @@ function renderChart(chart) {
             outerRadius="82%"
             paddingAngle={2}
             stroke="var(--background)"
+            onClick={handlePoint}
+            style={handlePoint ? { cursor: "pointer" } : undefined}
           >
             {data.map((_, i) => (
               <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
@@ -296,7 +310,12 @@ function renderChart(chart) {
             interval={0}
           />
           <Tooltip content={<TooltipBody />} cursor={{ fill: "rgba(20,17,13,0.06)" }} />
-          <Bar dataKey="y" radius={[0, 4, 4, 0]}>
+          <Bar
+            dataKey="y"
+            radius={[0, 4, 4, 0]}
+            onClick={handlePoint}
+            style={handlePoint ? { cursor: "pointer" } : undefined}
+          >
             {data.map((_, i) => (
               <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
             ))}
@@ -465,7 +484,14 @@ function renderChart(chart) {
   return <Empty />;
 }
 
-export default function ChartPanel({ chart, primary = false, datasetTag = null }) {
+export default function ChartPanel({ chart, primary = false, datasetTag = null, onPointClick = null }) {
+  // Only chart types that have a natural categorical xAxis support drill-down.
+  // Skip line/area/scatter/multi-series — time-bucket and per-point filtering
+  // would need extra logic; we'll add later if users ask.
+  const drillable =
+    onPointClick &&
+    ["bar", "horizontal-bar", "pie", "donut"].includes(chart.type);
+  const effectiveClick = drillable ? onPointClick : null;
   const data = chart.data ?? [];
 
   return (
@@ -500,8 +526,13 @@ export default function ChartPanel({ chart, primary = false, datasetTag = null }
       </div>
 
       <div className={`w-full ${primary ? "h-80 lg:h-96" : "h-64"}`}>
-        {renderChart(chart)}
+        {renderChart(chart, effectiveClick)}
       </div>
+      {drillable && (
+        <p className="mt-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground/70">
+          Click a {chart.type === "pie" || chart.type === "donut" ? "slice" : "bar"} to see source rows
+        </p>
+      )}
 
       {Array.isArray(chart.series) && chart.series.length > 0 && (
         <SeriesLegend series={chart.series} />
