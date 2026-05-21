@@ -1,0 +1,51 @@
+order_id,order_date,channel,category,product,region,quantity,unit_price,discount_pct,cogs,order_total,return_flag
+10001,2025-07-02,Web direct,Electronics,Wireless Earbuds,Singapore,1,189.00,0,98.00,189.00,false
+10002,2025-07-02,Marketplace,Apparel,Linen Shirt,Sydney,2,68.00,10,38.00,122.40,false
+10003,2025-07-03,Retail partner,Home,Ceramic Lamp,Tokyo,1,142.00,0,71.00,142.00,false
+10004,2025-07-04,Web direct,Beauty,Vitamin C Serum,Hong Kong,3,42.00,0,16.50,126.00,false
+10005,2025-07-05,Marketplace,Electronics,Smart Watch,Sydney,1,329.00,15,180.00,279.65,false
+10006,2025-07-07,Web direct,Sports,Yoga Mat,Singapore,1,55.00,0,22.00,55.00,false
+10007,2025-07-08,B2B,Electronics,Bluetooth Speaker,Melbourne,12,89.00,20,42.00,854.40,false
+10008,2025-07-09,Marketplace,Apparel,Denim Jacket,Tokyo,1,148.00,0,72.00,148.00,true
+10009,2025-07-10,Web direct,Toys,Building Blocks,Singapore,2,38.00,0,14.00,76.00,false
+10010,2025-07-11,Retail partner,Home,Throw Pillow Set,Sydney,1,72.00,0,30.00,72.00,false
+10011,2025-07-13,Web direct,Beauty,Hair Oil,Hong Kong,2,28.00,0,11.00,56.00,false
+10012,2025-07-14,Marketplace,Electronics,Wireless Charger,Tokyo,1,49.00,0,22.00,49.00,false
+10013,2025-07-15,Web direct,Apparel,Wool Coat,Melbourne,1,289.00,5,142.00,274.55,false
+10014,2025-07-17,B2B,Home,Desk Organiser,Singapore,8,32.00,15,14.00,217.60,false
+10015,2025-07-18,Web direct,Sports,Running Shoes,Sydney,1,165.00,0,78.00,165.00,false
+10016,2025-07-20,Marketplace,Electronics,USB Hub,Hong Kong,1,38.00,0,15.00,38.00,false
+10017,2025-07-21,Web direct,Beauty,Face Cream,Tokyo,2,58.00,10,24.00,104.40,false
+10018,2025-07-23,Retail partner,Toys,Board Game,Singapore,1,42.00,0,18.00,42.00,false
+10019,2025-07-24,Web direct,Apparel,Cashmere Scarf,Sydney,1,128.00,0,62.00,128.00,true
+10020,2025-07-26,Marketplace,Electronics,Tablet,Melbourne,1,449.00,10,260.00,404.10,false
+10021,2025-07-27,Web direct,Home,Wall Clock,Hong Kong,1,68.00,0,30.00,68.00,false
+10022,2025-07-29,Web direct,Sports,Dumbbell Set,Tokyo,1,189.00,0,92.00,189.00,false
+10023,2025-07-30,Marketplace,Beauty,Lipstick,Singapore,4,24.00,0,8.00,96.00,false
+10024,2025-08-01,B2B,Electronics,Monitor,Sydney,5,289.00,20,160.00,1156.00,false
+10025,2025-08-02,Web direct,Apparel,Summer Dress,Melbourne,1,98.00,0,46.00,98.00,false
+10026,2025-08-04,Retail partner,Home,Bedside Table,Hong Kong,1,178.00,0,82.00,178.00,false
+10027,2025-08-05,Web direct,Beauty,Eye Cream,Tokyo,1,72.00,0,30.00,72.00,false
+10028,2025-08-07,Marketplace,Toys,Stuffed Animal,Singapore,3,28.00,0,11.00,84.00,false
+10029,2025-08-08,Web direct,Electronics,Wireless Mouse,Sydney,1,49.00,0,21.00,49.00,false
+10030,2025-08-10,Web direct,Sports,Cycling Helmet,Melbourne,1,89.00,0,42.00,89.00,false
+10031,2025-08-12,Marketplace,Apparel,Polo Shirt,Hong Kong,2,58.00,15,28.00,98.60,false
+10032,2025-08-13,B2B,Electronics,Webcam,Tokyo,10,79.00,20,38.00,632.00,false
+10033,2025-08-15,Web direct,Beauty,Sunscreen,Singapore,2,32.00,0,12.00,64.00,false
+10034,2025-08-16,Retail partner,Home,Coffee Table,Sydney,1,329.00,0,160.00,329.00,false
+10035,2025-08-18,Web direct,Toys,Lego Set,Melbourne,1,128.00,0,58.00,128.00,false
+10036,2025-08-19,Marketplace,Electronics,Headphones,Hong Kong,1,219.00,10,118.00,197.10,true
+10037,2025-08-21,Web direct,Apparel,Knit Sweater,Tokyo,1,118.00,0,56.00,118.00,false
+10038,2025-08-23,Web direct,Sports,Tennis Racket,Singapore,1,178.00,0,88.00,178.00,false
+10039,2025-08-25,Marketplace,Beauty,Perfume,Sydney,1,92.00,5,38.00,87.40,false
+10040,2025-08-27,B2B,Home,Office Chair,Melbourne,4,289.00,15,142.00,982.60,false
+10041,2025-08-29,Web direct,Electronics,Earbuds Pro,Hong Kong,1,249.00,10,128.00,224.10,false
+10042,2025-08-30,Retail partner,Apparel,Trench Coat,Tokyo,1,318.00,0,158.00,318.00,false
+10043,2025-09-01,Web direct,Beauty,Cleanser,Singapore,3,28.00,0,10.00,84.00,false
+10044,2025-09-03,Marketplace,Toys,Puzzle,Sydney,2,32.00,0,12.00,64.00,false
+10045,2025-09-04,Web direct,Electronics,Smart Speaker,Melbourne,1,179.00,0,82.00,179.00,false
+10046,2025-09-06,Web direct,Sports,Resistance Bands,Hong Kong,2,38.00,0,14.00,76.00,false
+10047,2025-09-08,Marketplace,Apparel,T-Shirt 3-pack,Tokyo,1,48.00,0,18.00,48.00,false
+10048,2025-09-10,B2B,Electronics,Conference Phone,Singapore,3,289.00,15,142.00,737.55,false
+10049,2025-09-12,Web direct,Home,Floor Lamp,Sydney,1,148.00,0,72.00,148.00,false
+10050,2025-09-14,Retail partner,Beauty,Makeup Palette,Melbourne,1,68.00,0,28.00,68.00,false

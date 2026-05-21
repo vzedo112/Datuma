@@ -284,12 +284,12 @@ function Hero() {
               Upload your first file
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
             </Link>
-            <a
-              href="#how"
+            <Link
+              to="/sample"
               className="inline-flex items-center gap-2 h-14 px-8 rounded-full text-base border border-foreground/20 hover:bg-foreground/5"
             >
               See it work
-            </a>
+            </Link>
           </div>
         </div>
       </div>

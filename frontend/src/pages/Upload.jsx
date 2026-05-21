@@ -109,6 +109,20 @@ export default function Upload() {
     setDatasetNames((prev) => ({ ...prev, [filename]: name }));
   };
 
+  const loadSample = async () => {
+    try {
+      setError(null);
+      const res = await fetch("/samples/sample-orders.csv");
+      if (!res.ok) throw new Error("Couldn't load the sample file.");
+      const blob = await res.blob();
+      const file = new File([blob], "sample-orders.csv", { type: "text/csv" });
+      setFiles([file]);
+      setDatasetNames({ "sample-orders.csv": "Sample orders" });
+    } catch (err) {
+      setError(err?.message || "Couldn't load sample data.");
+    }
+  };
+
   const oversize = files.find((f) => f.size > MAX_SIZE_BYTES);
 
   const startAnalyze = async () => {
@@ -285,6 +299,20 @@ export default function Upload() {
         disabled={loading}
         maxFiles={planFileLimit}
       />
+
+      {files.length === 0 && !loading && !parent && (
+        <div className="mt-4 flex items-center justify-center gap-2 text-xs font-mono text-muted-foreground">
+          <span className="uppercase tracking-widest">Don't have a file handy?</span>
+          <button
+            type="button"
+            onClick={loadSample}
+            className="inline-flex items-center gap-1 text-foreground hover:text-brand transition-colors uppercase tracking-widest underline underline-offset-4"
+          >
+            Try with sample data
+            <ArrowRight className="w-3 h-3" />
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="mt-6 rounded-xl border border-rose-200 bg-rose-50 p-5 flex items-start gap-3">

@@ -25,6 +25,7 @@ import Dashboard from "./pages/Dashboard";
 import History from "./pages/History";
 import Settings from "./pages/Settings";
 import SharedDashboard from "./pages/SharedDashboard";
+import Sample from "./pages/Sample";
 
 function TokenSync() {
   const { getToken } = useAuth();
@@ -64,6 +65,7 @@ function Routing() {
       <Route path="/terms" element={<Terms />} />
       <Route path="/security" element={<Security />} />
       <Route path="/share/:token" element={<SharedDashboard />} />
+      <Route path="/sample" element={<Sample />} />
       {isClerkConfigured ? (
         <>
           <Route path="/sign-in/*" element={<SignInPage />} />
