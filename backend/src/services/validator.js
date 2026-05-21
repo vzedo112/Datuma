@@ -1,6 +1,6 @@
 const { VALID_BUCKETS } = require('./aggregator');
 
-const VALID_CHART_TYPES = ['line', 'bar', 'pie'];
+const VALID_CHART_TYPES = ['line', 'bar', 'pie', 'area', 'donut', 'horizontal-bar', 'scatter'];
 const VALID_TRENDS = ['up', 'down', 'neutral'];
 const VALID_SEVERITIES = ['info', 'warning', 'success'];
 const VALID_AGGREGATIONS = ['sum', 'avg', 'count', 'min', 'max', 'none'];

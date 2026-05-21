@@ -81,7 +81,7 @@ Return ONLY valid JSON, no markdown, no commentary, in this exact structure:
   ],
   "charts": [
     {
-      "type": "line | bar | pie",
+      "type": "line | bar | pie | area | donut | horizontal-bar | scatter",
       "title": "Chart title",
       "datasetName": "REQUIRED. Name of the dataset this chart visualises, exactly as given above. A chart can only reference ONE dataset.",
       "xAxis": "Exact column name from that dataset's schema (the grouping dimension)",
@@ -107,10 +107,14 @@ Return ONLY valid JSON, no markdown, no commentary, in this exact structure:
 2. Every chart MUST use xAxis and yAxis values that exist in the schema of the dataset specified by "datasetName". Never invent column names. Never reference a column from a different dataset.
 3. Every chart MUST specify "datasetName" exactly matching one of the dataset names listed above.
 4. Every insight MUST reference specific values, comparisons, or anomalies from the data. Reject any insight that could apply to any dataset.
-5. Choose chart types thoughtfully:
-   - line for time-series data (when x axis is a date or sequential)
-   - bar for categorical comparisons
-   - pie for proportional breakdowns (only when there are 6 or fewer categories)
+5. Choose chart types thoughtfully. Pick the type that best fits the data shape and the question being answered. Don't default to "bar" for everything — variety makes the dashboard easier to read.
+   - line: time-series where the xAxis is a date or sequential, focus is the trend/direction
+   - area: time-series where you want to emphasise cumulative magnitude (revenue building, usage growing). Use sparingly — line is usually clearer
+   - bar: categorical comparisons with 3-12 categories, fits horizontally
+   - horizontal-bar: categorical comparisons where category names are long (won't fit as x-axis labels) OR there are 8-20 categories that need vertical space
+   - pie: proportional breakdown when there are 2-5 slices and the share is the point (e.g. channel mix)
+   - donut: same as pie but used when you want to surface a central total alongside the breakdown. Limit to 2-5 slices
+   - scatter: relationship between two NUMERIC columns (e.g. price vs quantity, hours vs revenue). Both xAxis and yAxis must be numeric. Don't use scatter when one axis is categorical — use bar instead
 6. Choose the aggregation deliberately. The data may be transaction-level (many raw rows per category) or already-aggregated (one row per category). The aggregation tells the renderer how to reduce raw rows into chart data points, grouped by xAxis.
    - "sum": total of yAxis per xAxis group. Use when measuring volume (revenue, units, hours).
    - "avg": average of yAxis per xAxis group. Use for rates, prices, scores.
