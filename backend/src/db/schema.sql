@@ -52,6 +52,37 @@ ALTER TABLE dashboards
   REFERENCES folders(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS dashboards_folder_idx ON dashboards (folder_id);
 
+-- Connector demand tracking. Every "I want this" click on the Upload page
+-- writes a row here so we can rank which connector to build first.
+CREATE TABLE IF NOT EXISTS connector_interest (
+  id          SERIAL PRIMARY KEY,
+  user_id     TEXT,
+  source      TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS connector_interest_source_idx
+  ON connector_interest (source);
+CREATE INDEX IF NOT EXISTS connector_interest_user_source_idx
+  ON connector_interest (user_id, source);
+
+-- Pending team invitations. We store every invited email so the seat counter
+-- and the UI list survive a browser refresh. When the invitee signs up via
+-- Clerk, a webhook (or the seat-joiner flow) will flip status to 'accepted'.
+CREATE TABLE IF NOT EXISTS team_invites (
+  id           SERIAL PRIMARY KEY,
+  inviter_id   TEXT NOT NULL,
+  email        TEXT NOT NULL,
+  status       TEXT NOT NULL DEFAULT 'pending'
+                  CHECK (status IN ('pending', 'accepted', 'revoked')),
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  responded_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS team_invites_inviter_idx
+  ON team_invites (inviter_id, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS team_invites_open_idx
+  ON team_invites (inviter_id, LOWER(email))
+  WHERE status = 'pending';
+
 -- Soft-delete: keep the row so quota usage doesn't drop when the user deletes
 -- a dashboard, but hide it from all read paths. NULL = not deleted.
 ALTER TABLE dashboards ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
