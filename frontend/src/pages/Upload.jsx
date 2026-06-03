@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import UploadDropzone from "../components/Upload/UploadDropzone";
 import DataQualityReport from "../components/Upload/DataQualityReport";
+import ConnectorsTeaser from "../components/Upload/ConnectorsTeaser";
 import { useDashboard } from "../context/DashboardContext";
 import {
   analyzeUpload,
@@ -412,6 +413,8 @@ export default function Upload() {
           </div>
         ))}
       </div>
+
+      <ConnectorsTeaser />
     </div>
   );
 }

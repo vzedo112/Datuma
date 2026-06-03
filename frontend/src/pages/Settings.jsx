@@ -14,11 +14,13 @@ import {
   AlertCircle,
   Check,
   RefreshCw,
+  Users,
 } from "lucide-react";
 import { useUser, useClerk } from "@clerk/clerk-react";
 import { getUsage, openBillingPortal, setSpendCap, resyncBilling } from "../services/api";
 import { isClerkConfigured } from "../lib/auth";
 import ClerkAccountSection from "../components/Settings/ClerkAccountSection";
+import TeamMembers from "../components/Settings/TeamMembers";
 
 function formatEuro(cents) {
   return `€${(cents / 100).toFixed(2)}`;
@@ -286,6 +288,10 @@ export default function Settings() {
               Refresh from Stripe
             </button>
           </div>
+        </Section>
+
+        <Section icon={Users} eyebrow="Team" title="Members & invites">
+          <TeamMembers />
         </Section>
 
         <Section icon={User} eyebrow="Profile" title="Who you are">

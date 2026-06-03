@@ -171,6 +171,7 @@ export default function Dashboard() {
       />
       <ExportMenu
         getNode={() => viewRef.current}
+        dashboard={dashboard}
         filename={dashboard?.title || filename || "datuma-dashboard"}
       />
     </>
