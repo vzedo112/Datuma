@@ -176,4 +176,28 @@ export async function clearChatThread(dashboardId) {
   return response.data;
 }
 
+// --- Connector demand tracking (Coming Soon teaser) ---
+
+export async function recordConnectorInterest(source) {
+  const response = await api.post("/api/connectors/interest", { source });
+  return response.data;
+}
+
+// --- Team invites ---
+
+export async function listTeamMembers() {
+  const response = await api.get("/api/team/members");
+  return response.data; // { allowed, planKey, seatLimit, invites }
+}
+
+export async function inviteTeammate(email) {
+  const response = await api.post("/api/team/invite", { email });
+  return response.data; // { invite }
+}
+
+export async function revokeTeamInvite(id) {
+  const response = await api.delete(`/api/team/invite/${id}`);
+  return response.data;
+}
+
 export default api;
