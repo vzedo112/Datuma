@@ -24,6 +24,7 @@ import Upload from "./pages/Upload";
 import Dashboard from "./pages/Dashboard";
 import History from "./pages/History";
 import Settings from "./pages/Settings";
+import Help from "./pages/Help";
 import SharedDashboard from "./pages/SharedDashboard";
 import Sample from "./pages/Sample";
 
@@ -64,6 +65,8 @@ function Routing() {
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/security" element={<Security />} />
+      <Route path="/help" element={<Help />} />
+      <Route path="/faq" element={<Help />} />
       <Route path="/share/:token" element={<SharedDashboard />} />
       <Route path="/sample" element={<Sample />} />
       {isClerkConfigured ? (
