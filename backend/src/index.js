@@ -10,6 +10,8 @@ const webhookRoutes = require('./routes/webhooks');
 const clerkWebhookRoutes = require('./routes/clerkWebhooks');
 const shareRoutes = require('./routes/share');
 const folderRoutes = require('./routes/folders');
+const connectorRoutes = require('./routes/connectors');
+const teamRoutes = require('./routes/team');
 const { withClerk } = require('./middleware/auth');
 const db = require('./db');
 
@@ -57,6 +59,8 @@ app.use('/api/dashboards', dashboardRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/share', shareRoutes);
 app.use('/api/folders', folderRoutes);
+app.use('/api/connectors', connectorRoutes);
+app.use('/api/team', teamRoutes);
 
 // Sentry error handler must be last middleware before any user-facing handler.
 if (sentryEnabled) {
