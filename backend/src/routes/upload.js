@@ -17,6 +17,10 @@ const {
 } = require('../middleware/auth');
 const { createOverageInvoiceItem } = require('../services/stripe');
 const {
+  sendDashboardReady,
+  sendOverageWarning,
+} = require('../services/email');
+const {
   saveDashboard,
   countThisMonth,
   listRecentWithContext,
@@ -612,6 +616,22 @@ router.post('/', requireUser(), upload.single('file'), async (req, res) => {
       }
     }
 
+    // Fire-and-forget transactional emails. Both are wrapped — anything
+    // throwing here would block the response, which is worse than a missed
+    // email we can always backfill.
+    fireEmailTriggers({
+      userId,
+      planName: plan.name,
+      monthlyIncluded,
+      overageEuros: plan.overageEuros,
+      usedAfter,
+      dashboard: dashboardWithData,
+      savedId,
+      filename: req.file.originalname,
+    }).catch((err) =>
+      console.warn('[email] trigger error:', err.message)
+    );
+
     res.json({
       id: savedId,
       filename: req.file.originalname,
@@ -628,5 +648,84 @@ router.post('/', requireUser(), upload.single('file'), async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Fires post-save transactional emails. Single-shot per upload — dashboard
+// ready always sends, overage-warning fires once per calendar month per user
+// (tracked via Clerk publicMetadata.overageWarnedMonth = 'YYYY-MM').
+async function fireEmailTriggers({
+  userId,
+  planName,
+  monthlyIncluded,
+  overageEuros,
+  usedAfter,
+  dashboard,
+  savedId,
+  filename,
+}) {
+  let clerkClient;
+  try {
+    ({ clerkClient } = require('@clerk/express'));
+  } catch {
+    return; // Clerk not wired — nothing to do.
+  }
+
+  let user = null;
+  try {
+    user = await clerkClient.users.getUser(userId);
+  } catch (err) {
+    console.warn('[email] could not fetch user for triggers:', err.message);
+    return;
+  }
+  if (!user) return;
+
+  // 1) Dashboard ready — always when the dashboard saved successfully.
+  if (savedId !== null) {
+    try {
+      await sendDashboardReady({
+        user,
+        dashboardTitle: dashboard?.title,
+        dashboardId: savedId,
+        filename,
+      });
+    } catch (err) {
+      console.warn('[email] dashboard-ready send failed:', err.message);
+    }
+  }
+
+  // 2) Overage warning — only when crossing 80% AND we haven't already warned
+  // this calendar month. Skip on Starter (no overage path) and Enterprise
+  // (unlimited).
+  if (
+    Number.isFinite(monthlyIncluded) &&
+    monthlyIncluded > 0 &&
+    overageEuros &&
+    overageEuros > 0
+  ) {
+    const ratio = usedAfter / monthlyIncluded;
+    const now = new Date();
+    const yyyymm = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+    const lastWarned = user.publicMetadata?.overageWarnedMonth;
+
+    if (ratio >= 0.8 && lastWarned !== yyyymm) {
+      try {
+        await sendOverageWarning({
+          user,
+          planName,
+          used: usedAfter,
+          included: monthlyIncluded,
+          overageEuros,
+        });
+        await clerkClient.users.updateUserMetadata(userId, {
+          publicMetadata: {
+            ...user.publicMetadata,
+            overageWarnedMonth: yyyymm,
+          },
+        });
+      } catch (err) {
+        console.warn('[email] overage-warn send failed:', err.message);
+      }
+    }
+  }
+}
 
 module.exports = router;

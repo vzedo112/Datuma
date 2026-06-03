@@ -148,7 +148,7 @@ async function callClaude(prompt, retryMessage = null, plan = 'starter') {
   }
 
   const modelToUse = (plan === 'pro' || plan === 'team')
-    ? 'claude-opus-4-7'
+    ? 'claude-opus-4-8'
     : 'claude-sonnet-4-6';
 
   const response = await client.messages.create({
