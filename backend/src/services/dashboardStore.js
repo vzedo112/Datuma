@@ -73,6 +73,18 @@ async function deleteDashboard(id, userId) {
   return result.rowCount > 0;
 }
 
+async function updateDashboardSpec(id, userId, newDashboard) {
+  if (!db.isReady() || !userId) return null;
+  const result = await db.query(
+    `UPDATE dashboards
+        SET dashboard = $1
+      WHERE id = $2 AND user_id = $3
+      RETURNING id, name, filename, row_count, dashboard, created_at, share_token`,
+    [newDashboard, id, userId]
+  );
+  return result.rows[0] ?? null;
+}
+
 async function getDashboard(id, userId) {
   if (!db.isReady() || !userId) return null;
   const result = await db.query(
@@ -167,4 +179,5 @@ module.exports = {
   renameDashboard,
   deleteDashboard,
   listRecentWithContext,
+  updateDashboardSpec,
 };
