@@ -14,7 +14,10 @@ const {
   revokeShareToken,
   renameDashboard,
   deleteDashboard,
+  updateDashboardSpec,
 } = require('../services/dashboardStore');
+const { validateDashboard } = require('../services/validator');
+const { attachChartData } = require('../services/aggregator');
 const {
   listMessages,
   appendMessage,
@@ -123,6 +126,89 @@ router.patch('/:id', requireUser(), async (req, res) => {
     res.json({ ok: true, name: name.trim().slice(0, 120) });
   } catch (err) {
     console.error('Rename dashboard error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/dashboards/:id/spec — update the dashboard's chart spec from
+// the editor. Body: { charts: [...] }. We validate each chart against the
+// stored dataset schemas, re-aggregate against the stored rows, and persist
+// the result. Metrics + insights are preserved as-is; only `charts` is
+// rewritten. The endpoint is idempotent and safe to retry.
+router.patch('/:id/spec', requireUser(), async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ error: 'Invalid dashboard id' });
+    }
+
+    const incomingCharts = req.body?.charts;
+    if (!Array.isArray(incomingCharts)) {
+      return res.status(400).json({ error: 'charts must be an array' });
+    }
+    if (incomingCharts.length > 12) {
+      return res.status(400).json({ error: 'A dashboard supports up to 12 charts.' });
+    }
+
+    const row = await getDashboard(id, userId);
+    if (!row) return res.status(404).json({ error: 'Not found' });
+
+    const current = row.dashboard || {};
+    const datasets = current?.analysisContext?.datasets || [];
+    if (datasets.length === 0) {
+      return res.status(409).json({
+        error:
+          "This dashboard was generated before we started storing source rows, so it can't be edited. Re-run it to enable editing.",
+        code: 'NO_SOURCE_ROWS',
+      });
+    }
+
+    // Validate each incoming chart against the appropriate dataset schema.
+    const schemaByDataset = Object.fromEntries(
+      datasets.map((d) => [d.name, d.schema])
+    );
+    const statsByDataset = Object.fromEntries(
+      datasets.map((d) => [d.name, d.stats])
+    );
+    const validation = validateDashboard(
+      { ...current, charts: incomingCharts },
+      schemaByDataset,
+      statsByDataset
+    );
+    if (!validation.valid) {
+      return res.status(400).json({
+        error: validation.errors.join('; '),
+        code: 'INVALID_CHART_SPEC',
+        details: validation.errors,
+      });
+    }
+
+    // Re-aggregate every chart against the stored rows so the editor doesn't
+    // need to know about aggregation. The aggregator picks the right dataset
+    // per chart via chart.datasetName.
+    const datasetsByName = Object.fromEntries(
+      datasets.map((d) => [d.name, { rows: d.rows || [], stats: d.stats }])
+    );
+    const reAggregated = attachChartData(datasetsByName, {
+      ...current,
+      charts: incomingCharts,
+    });
+
+    const updated = await updateDashboardSpec(id, userId, reAggregated);
+    if (!updated) return res.status(404).json({ error: 'Not found' });
+
+    res.json({
+      id: updated.id,
+      name: updated.name ?? null,
+      filename: updated.filename,
+      rowCount: updated.row_count,
+      dashboard: updated.dashboard,
+      createdAt: updated.created_at,
+      shareToken: updated.share_token ?? null,
+    });
+  } catch (err) {
+    console.error('Edit dashboard spec error:', err);
     res.status(500).json({ error: err.message });
   }
 });
