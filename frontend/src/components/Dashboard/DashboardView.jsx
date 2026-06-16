@@ -1,7 +1,16 @@
 import { useMemo, useState } from "react";
-import { FileSpreadsheet, Layers } from "lucide-react";
+import { FileSpreadsheet, Layers, Plus } from "lucide-react";
+import {
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+} from "@dnd-kit/core";
+import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import MetricCard from "./MetricCard";
 import ChartPanel from "./ChartPanel";
+import SortableChart from "./SortableChart";
 import InsightPanel from "./InsightPanel";
 import DrillDownModal from "./DrillDownModal";
 
@@ -31,9 +40,37 @@ function buildRowsIndex(dashboard) {
   return Object.keys(map).length > 0 ? map : null;
 }
 
-export default function DashboardView({ dashboard, filename, rowCount, header, actions, viewRef }) {
+export default function DashboardView({
+  dashboard,
+  filename,
+  rowCount,
+  header,
+  actions,
+  viewRef,
+  // Editor props. When `editing` is true, charts become sortable + show
+  // per-card edit/remove affordances, and an "Add chart" tile is appended.
+  editing = false,
+  onChartReorder,
+  onChartEdit,
+  onChartRemove,
+  onAddChart,
+}) {
   const datasets = dashboard?.datasets ?? [];
   const multi = datasets.length > 1;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const from = Number(String(active.id).replace("chart-", ""));
+    const to = Number(String(over.id).replace("chart-", ""));
+    if (Number.isInteger(from) && Number.isInteger(to)) {
+      onChartReorder?.(from, to);
+    }
+  };
 
   const rowsIndex = useMemo(() => buildRowsIndex(dashboard), [dashboard]);
   const [drill, setDrill] = useState(null); // { datasetName, filter, title }
@@ -167,21 +204,62 @@ export default function DashboardView({ dashboard, filename, rowCount, header, a
 
       {dashboard.charts?.length > 0 && (
         <section className="mb-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {dashboard.charts.map((c, i) => (
-              <ChartPanel
-                key={i}
-                chart={c}
-                primary={i === 0}
-                datasetTag={formatDatasetTag(c.datasetName, multi)}
-                onPointClick={
-                  rowsIndex && resolveDataset(c.datasetName)
-                    ? (point) => openChartDrill(c, point)
-                    : undefined
-                }
-              />
-            ))}
-          </div>
+          {editing ? (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={dashboard.charts.map((_, i) => `chart-${i}`)}
+                strategy={rectSortingStrategy}
+              >
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {dashboard.charts.map((c, i) => (
+                    <SortableChart
+                      key={`chart-${i}`}
+                      chart={c}
+                      index={i}
+                      primary={i === 0}
+                      datasetTag={formatDatasetTag(c.datasetName, multi)}
+                      editing={editing}
+                      onEdit={() => onChartEdit?.(i)}
+                      onRemove={() => onChartRemove?.(i)}
+                    />
+                  ))}
+                  <button
+                    type="button"
+                    onClick={onAddChart}
+                    data-export-hide="true"
+                    className="rounded-xl border border-dashed border-foreground/25 bg-card/40 hover:bg-accent/40 hover:border-foreground/40 transition-colors p-5 lg:p-6 flex items-center justify-center min-h-[280px]"
+                  >
+                    <span className="inline-flex flex-col items-center gap-2 text-muted-foreground">
+                      <span className="p-3 rounded-full bg-background border border-border">
+                        <Plus className="w-5 h-5" strokeWidth={1.5} />
+                      </span>
+                      <span className="text-sm font-medium">Add a chart</span>
+                    </span>
+                  </button>
+                </div>
+              </SortableContext>
+            </DndContext>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {dashboard.charts.map((c, i) => (
+                <ChartPanel
+                  key={i}
+                  chart={c}
+                  primary={i === 0}
+                  datasetTag={formatDatasetTag(c.datasetName, multi)}
+                  onPointClick={
+                    rowsIndex && resolveDataset(c.datasetName)
+                      ? (point) => openChartDrill(c, point)
+                      : undefined
+                  }
+                />
+              ))}
+            </div>
+          )}
         </section>
       )}
 

@@ -13,8 +13,14 @@ import DashboardView from "../components/Dashboard/DashboardView";
 import ShareMenu from "../components/Dashboard/ShareMenu";
 import ExportMenu from "../components/Dashboard/ExportMenu";
 import ChatPanel from "../components/Dashboard/ChatPanel";
+import EditorToolbar from "../components/Dashboard/EditorToolbar";
+import ChartPicker from "../components/Dashboard/ChartPicker";
 import { useDashboard } from "../context/DashboardContext";
-import { getDashboardById, listDashboards } from "../services/api";
+import {
+  getDashboardById,
+  listDashboards,
+  saveDashboardCharts,
+} from "../services/api";
 
 export default function Dashboard() {
   const {
@@ -33,6 +39,19 @@ export default function Dashboard() {
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState(null);
   const viewRef = useRef(null);
+
+  // --- Editor state -------------------------------------------------------
+  // editing: are we in edit mode (sortable, add/remove visible)?
+  // editedDashboard: the working copy of the dashboard while editing. Null
+  //   when not editing or when we haven't diverged from the saved state.
+  // pickerState: { mode: 'add' | 'edit', chartIndex?: number } | null
+  // saving: PATCH in flight?
+  // saveError: last save failure (cleared on next attempt)
+  const [editing, setEditing] = useState(false);
+  const [editedDashboard, setEditedDashboard] = useState(null);
+  const [pickerState, setPickerState] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -155,25 +174,141 @@ export default function Dashboard() {
     </button>
   );
 
+  // --- Editor handlers ----------------------------------------------------
+
+  // Editing requires source rows (analysisContext.datasets[].rows). Legacy
+  // dashboards saved before that field existed can't be edited — they'd need
+  // re-running first.
+  const ctxDatasets = dashboard?.analysisContext?.datasets || [];
+  const canEdit = Boolean(dashboardId) && ctxDatasets.length > 0;
+
+  const startEditing = () => {
+    setEditedDashboard({ ...dashboard });
+    setEditing(true);
+    setSaveError(null);
+  };
+
+  const cancelEditing = () => {
+    setEditing(false);
+    setEditedDashboard(null);
+    setPickerState(null);
+    setSaveError(null);
+  };
+
+  const resetEdits = () => {
+    setEditedDashboard({ ...dashboard });
+    setSaveError(null);
+  };
+
+  const dirty =
+    editing &&
+    editedDashboard &&
+    JSON.stringify(editedDashboard.charts || []) !==
+      JSON.stringify(dashboard?.charts || []);
+
+  const handleReorder = (from, to) => {
+    if (!editedDashboard) return;
+    const next = [...(editedDashboard.charts || [])];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    setEditedDashboard({ ...editedDashboard, charts: next });
+  };
+
+  const handleRemoveChart = (idx) => {
+    if (!editedDashboard) return;
+    if (!window.confirm("Remove this chart from the dashboard?")) return;
+    const next = (editedDashboard.charts || []).filter((_, i) => i !== idx);
+    setEditedDashboard({ ...editedDashboard, charts: next });
+  };
+
+  const handleEditChartClick = (idx) => {
+    setPickerState({ mode: "edit", chartIndex: idx });
+  };
+
+  const handleAddChartClick = () => {
+    setPickerState({ mode: "add" });
+  };
+
+  const handlePickerSave = (chartSpec) => {
+    if (!editedDashboard) return;
+    const charts = [...(editedDashboard.charts || [])];
+    if (pickerState?.mode === "edit" && Number.isInteger(pickerState.chartIndex)) {
+      charts[pickerState.chartIndex] = {
+        ...charts[pickerState.chartIndex],
+        ...chartSpec,
+        // Drop stale data — server will re-aggregate.
+        data: undefined,
+        series: undefined,
+      };
+    } else {
+      charts.push(chartSpec);
+    }
+    setEditedDashboard({ ...editedDashboard, charts });
+    setPickerState(null);
+  };
+
+  const handleSaveEdits = async () => {
+    if (!editedDashboard || !dashboardId) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const result = await saveDashboardCharts(
+        dashboardId,
+        editedDashboard.charts || []
+      );
+      setResult(result);
+      setEditing(false);
+      setEditedDashboard(null);
+    } catch (err) {
+      setSaveError(
+        err?.response?.data?.error ||
+          err?.message ||
+          "Couldn't save your changes."
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // What we actually render: the edited copy when in edit mode, otherwise
+  // the canonical saved dashboard.
+  const displayed = editing ? editedDashboard ?? dashboard : dashboard;
+
   const actions = (
     <>
-      <Link
-        to="/app"
-        className="inline-flex items-center gap-1.5 h-10 px-4 rounded-md border border-border text-sm hover:bg-accent transition-colors"
-      >
-        <RefreshCw className="w-3.5 h-3.5" />
-        Re-run
-      </Link>
-      <ShareMenu
-        dashboardId={dashboardId}
-        shareToken={shareToken}
-        onTokenChange={setShareToken}
+      <EditorToolbar
+        editing={editing}
+        dirty={dirty}
+        saving={saving}
+        canEdit={canEdit}
+        cardCount={(displayed?.charts || []).length}
+        onStart={startEditing}
+        onCancel={cancelEditing}
+        onReset={resetEdits}
+        onSave={handleSaveEdits}
+        onAdd={handleAddChartClick}
       />
-      <ExportMenu
-        getNode={() => viewRef.current}
-        dashboard={dashboard}
-        filename={dashboard?.title || filename || "datuma-dashboard"}
-      />
+      {!editing && (
+        <>
+          <Link
+            to="/app"
+            className="inline-flex items-center gap-1.5 h-10 px-4 rounded-md border border-border text-sm hover:bg-accent transition-colors"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Re-run
+          </Link>
+          <ShareMenu
+            dashboardId={dashboardId}
+            shareToken={shareToken}
+            onTokenChange={setShareToken}
+          />
+          <ExportMenu
+            getNode={() => viewRef.current}
+            dashboard={dashboard}
+            filename={dashboard?.title || filename || "datuma-dashboard"}
+          />
+        </>
+      )}
     </>
   );
 
@@ -199,15 +334,49 @@ export default function Dashboard() {
         </div>
       )}
       <AppendSummaryBanner summary={dashboard.appendSummary} />
+      {saveError && (
+        <div
+          data-export-hide="true"
+          className="max-w-[1400px] mx-auto mb-4 rounded-xl border border-rose-200 bg-rose-50 p-4 flex items-start gap-3"
+        >
+          <AlertTriangle className="w-4 h-4 text-rose-700 shrink-0 mt-0.5" />
+          <p className="text-sm text-rose-900 leading-relaxed flex-1">{saveError}</p>
+          <button
+            type="button"
+            onClick={() => setSaveError(null)}
+            className="p-1 -m-1 text-rose-700 hover:text-rose-900"
+            aria-label="Dismiss"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
       <DashboardView
-        dashboard={dashboard}
+        dashboard={displayed}
         filename={filename}
         rowCount={rowCount}
         header={header}
         actions={actions}
         viewRef={viewRef}
+        editing={editing}
+        onChartReorder={handleReorder}
+        onChartEdit={handleEditChartClick}
+        onChartRemove={handleRemoveChart}
+        onAddChart={handleAddChartClick}
       />
-      {dashboardId && (
+      {pickerState && (
+        <ChartPicker
+          datasets={ctxDatasets}
+          initialChart={
+            pickerState.mode === "edit"
+              ? displayed?.charts?.[pickerState.chartIndex]
+              : null
+          }
+          onSave={handlePickerSave}
+          onClose={() => setPickerState(null)}
+        />
+      )}
+      {dashboardId && !editing && (
         <div className="max-w-[1400px] mx-auto mt-6">
           <ChatPanel dashboardId={dashboardId} />
         </div>

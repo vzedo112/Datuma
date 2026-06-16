@@ -183,6 +183,14 @@ export async function recordConnectorInterest(source) {
   return response.data;
 }
 
+// Editor: replace the dashboard's chart spec. Server re-aggregates and saves.
+export async function saveDashboardCharts(dashboardId, charts) {
+  const response = await api.patch(`/api/dashboards/${dashboardId}/spec`, {
+    charts,
+  });
+  return response.data; // full dashboard with re-aggregated data
+}
+
 // --- Team invites ---
 
 export async function listTeamMembers() {
